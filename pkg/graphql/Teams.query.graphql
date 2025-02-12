@@ -1,0 +1,48 @@
+query Teams(
+    $organizationId: ID!
+    $siteId: String!
+    $firstTeam: Int = 50
+    $afterTeam: String
+    $firstMember: Int = 50
+    $afterMember: String
+) {
+    team {
+        teamSearchV2(
+            organizationId: $organizationId,
+            siteId: $siteId
+            first: $firstTeam
+            after: $afterTeam
+        ) {
+            pageInfo {
+                hasNextPage
+                endCursor
+            }
+            edges {
+                node {
+                    team {
+                        id
+                        organizationId
+                        displayName
+                        description
+                        members(first: $firstMember after: $afterMember) {
+                            pageInfo {
+                                hasNextPage
+                                endCursor
+                            }
+                            edges {
+                                node {
+                                    member {
+                                        accountId
+                                        id
+                                        name
+                                    }
+                                    role
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
