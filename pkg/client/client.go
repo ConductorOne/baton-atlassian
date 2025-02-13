@@ -97,7 +97,7 @@ func (c *AtlassianClient) ListTeams(ctx context.Context, options PageOptions) ([
 	if options.PageToken != "" {
 		queryVariables["afterTeam"] = options.PageToken
 	}
-	body := parseGraphQLQuery("pkg/graphql/Teams.query.graphql", queryVariables)
+	body := parseGraphQLQuery("Teams.query.graphql", queryVariables)
 	_, err := c.getResourcesFromAPI(ctx, &res, &body)
 	if err != nil {
 		l.Error(fmt.Sprintf("Error getting resources: %s", err))
@@ -119,7 +119,7 @@ func (c *AtlassianClient) ListTeams(ctx context.Context, options PageOptions) ([
 				subQueryVariables["afterMember"] = subQueryNextPageToken
 			}
 
-			membersBody := parseGraphQLQuery("pkg/graphql/Teams.query.graphql", subQueryVariables)
+			membersBody := parseGraphQLQuery("Teams.query.graphql", subQueryVariables)
 
 			var memberResp TeamQuery
 			_, err := c.getResourcesFromAPI(ctx, &memberResp, &membersBody)
@@ -239,7 +239,8 @@ func (c *AtlassianClient) doRequest(
 }
 
 func parseGraphQLQuery(query string, queryVariables map[string]interface{}) interface{} {
-	queryBytes, err := os.ReadFile(query)
+	dirName := GetEnv("GRAPHQL_DIR", "pkg/graphql/")
+	queryBytes, err := os.ReadFile(dirName + query)
 	if err != nil {
 		log.Fatalf("Error reading file query: %v", err)
 	}

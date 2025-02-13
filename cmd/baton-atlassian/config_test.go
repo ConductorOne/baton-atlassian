@@ -13,9 +13,5 @@ func TestConfigs(t *testing.T) {
 		FieldRelationships...,
 	)
 
-	testCases := []test.TestCase{
-		// Add test cases here.
-	}
-
-	test.ExerciseTestCases(t, configurationSchema, ValidateConfig, testCases)
+	test.ExerciseTestCases(t, configurationSchema, ValidateConfig, []test.TestCase{})
 }

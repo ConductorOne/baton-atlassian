@@ -1,5 +1,7 @@
 package client
 
+import "os"
+
 const ItemsPerPage = 100
 
 type PageOptions struct {
@@ -12,4 +14,12 @@ func getPageSize(pageSize int) int {
 		pageSize = ItemsPerPage
 	}
 	return pageSize
+}
+
+func GetEnv(key string, defaultVal string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultVal
+	}
+	return value
 }
