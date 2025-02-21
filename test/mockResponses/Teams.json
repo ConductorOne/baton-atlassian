@@ -1,0 +1,87 @@
+{
+  "data": {
+    "team": {
+      "teamSearchV2": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        },
+        "edges": [
+          {
+            "node": {
+              "team": {
+                "id": "ari:cloud:identity::team/teamTest1",
+                "organizationId": "ari:cloud:platform::org/organizationTest",
+                "displayName": "Team 1",
+                "description": "",
+                "members": {
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  },
+                  "edges": [
+                    {
+                      "node": {
+                        "role": "REGULAR",
+                        "member": {
+                          "accountId": "ea960e6c-f613-4bed-8852-ab012603915b",
+                          "name": "User 1",
+                          "id": "ari:cloud:identity::user/ea960e6c-f613-4bed-8852-ab012603915b"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "team": {
+                "id": "ari:cloud:identity::team/teamTest2",
+                "organizationId": "ari:cloud:platform::org/organizationTest",
+                "displayName": "Team 2",
+                "description": "",
+                "members": {
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  },
+                  "edges": [
+                    {
+                      "node": {
+                        "role": "REGULAR",
+                        "member": {
+                          "accountId": "ea960e6c-f613-4bed-8852-ab012603915b",
+                          "name": "User 1",
+                          "id": "ari:cloud:identity::user/ea960e6c-f613-4bed-8852-ab012603915b"
+                        }
+                      }
+                    },
+                    {
+                      "node": {
+                        "role": "ADMIN",
+                        "member": {
+                          "accountId": "8b21d0aa-39a4-4c09-86d2-d29dff8d261f",
+                          "name": "User 2",
+                          "id": "ari:cloud:identity::user/8b21d0aa-39a4-4c09-86d2-d29dff8d261f"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "extensions": {
+    "gateway": {
+      "request_id": "asdfghjkl",
+      "crossRegion": false,
+      "edgeCrossRegion": false
+    }
+  }
+}

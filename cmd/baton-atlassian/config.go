@@ -6,10 +6,31 @@ import (
 )
 
 var (
+	userEmailField = field.StringField(
+		"user-email",
+		field.WithRequired(true),
+		field.WithDescription("User email used to authenticate to Atlassian API"),
+	)
+	apiTokenField = field.StringField(
+		"api-token",
+		field.WithRequired(true),
+		field.WithDescription("The API token to get access to Atlassian API."),
+	)
+	organizationField = field.StringField(
+		"organization",
+		field.WithDescription("Limit syncing to specific organization by providing organization ID."),
+		field.WithRequired(true),
+	)
+	siteIdField = field.StringField(
+		"site-id",
+		field.WithDescription("Limit syncing to specific sites by providing site slugs."),
+		field.WithRequired(false),
+		field.WithDefaultValue("None"),
+	)
 	// ConfigurationFields defines the external configuration required for the
 	// connector to run. Note: these fields can be marked as optional or
 	// required.
-	ConfigurationFields = []field.SchemaField{}
+	ConfigurationFields = []field.SchemaField{userEmailField, apiTokenField, organizationField, siteIdField}
 
 	// FieldRelationships defines relationships between the fields listed in
 	// ConfigurationFields that can be automatically validated. For example, a
