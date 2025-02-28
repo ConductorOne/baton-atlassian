@@ -35,10 +35,14 @@ func TestMain(m *testing.M) {
 // https://developer.atlassian.com/platform/atlassian-graphql-api/graphql/#teams_teamSearchV2
 func TestAtlassianClient_GetTeamsAndUsers(t *testing.T) {
 	// Create a mock response.
+	mockResponseBody, err := ReadFile("Teams.json")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
 	mockResponse := &http.Response{
 		StatusCode: http.StatusOK,
 		Header:     make(http.Header),
-		Body:       io.NopCloser(strings.NewReader(test.ReadFile("Teams.json"))),
+		Body:       io.NopCloser(strings.NewReader(mockResponseBody)),
 	}
 	mockResponse.Header.Set("Content-Type", "application/json")
 
@@ -185,4 +189,12 @@ func TestAtlassianClient_GetTeamsAndUsers_RequestDetails(t *testing.T) {
 			t.Errorf("Expected header %s to be %s, got %s", key, expectedValue, value)
 		}
 	}
+}
+func ReadFile(fileName string) (string, error) {
+	data, err := os.ReadFile("../../test/mockResponses/" + fileName)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
 }

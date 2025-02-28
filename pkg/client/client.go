@@ -5,7 +5,6 @@ import (
 	encoding "encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -97,8 +96,13 @@ func (c *AtlassianClient) ListTeams(ctx context.Context, options PageOptions) ([
 	if options.PageToken != "" {
 		queryVariables["afterTeam"] = options.PageToken
 	}
-	body := parseGraphQLQuery("Teams.query.graphql", queryVariables)
-	_, err := c.getResourcesFromAPI(ctx, &res, &body)
+	body, err := parseGraphQLQuery("Teams.query.graphql", queryVariables)
+	if err != nil {
+		l.Error(fmt.Sprintf("Error getting resources: %s", err))
+		return nil, "", nil, err
+	}
+
+	_, err = c.getResourcesFromAPI(ctx, &res, &body)
 	if err != nil {
 		l.Error(fmt.Sprintf("Error getting resources: %s", err))
 		return nil, "", nil, err
@@ -119,10 +123,14 @@ func (c *AtlassianClient) ListTeams(ctx context.Context, options PageOptions) ([
 				subQueryVariables["afterMember"] = subQueryNextPageToken
 			}
 
-			membersBody := parseGraphQLQuery("Teams.query.graphql", subQueryVariables)
+			membersBody, err := parseGraphQLQuery("Teams.query.graphql", subQueryVariables)
+			if err != nil {
+				l.Error(fmt.Sprintf("Error getting resources: %s", err))
+				return nil, "", nil, err
+			}
 
 			var memberResp TeamQuery
-			_, err := c.getResourcesFromAPI(ctx, &memberResp, &membersBody)
+			_, err = c.getResourcesFromAPI(ctx, &memberResp, &membersBody)
 			if err != nil {
 				l.Error(fmt.Sprintf("Error getting resources: %s", err))
 				return nil, "", nil, err
@@ -238,11 +246,11 @@ func (c *AtlassianClient) doRequest(
 	return nil, nil, err
 }
 
-func parseGraphQLQuery(query string, queryVariables map[string]interface{}) interface{} {
+func parseGraphQLQuery(query string, queryVariables map[string]interface{}) (interface{}, error) {
 	dirName := GetEnv("GRAPHQL_DIR", "pkg/graphql/")
 	queryBytes, err := os.ReadFile(dirName + query)
 	if err != nil {
-		log.Fatalf("Error reading file query: %v", err)
+		return nil, err
 	}
 
 	requestBody := GraphQLRequest{
@@ -250,5 +258,5 @@ func parseGraphQLQuery(query string, queryVariables map[string]interface{}) inte
 		Variables: queryVariables,
 	}
 
-	return requestBody
+	return requestBody, nil
 }
