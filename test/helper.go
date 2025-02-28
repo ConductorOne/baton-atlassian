@@ -1,9 +1,7 @@
 package test
 
 import (
-	"log"
 	"net/http"
-	"os"
 
 	"github.com/conductorone/baton-atlassian/pkg/client"
 	"github.com/conductorone/baton-sdk/pkg/uhttp"
@@ -44,13 +42,4 @@ func NewTestClient(response *http.Response, err error) *client.AtlassianClient {
 	httpClient := &http.Client{Transport: transport}
 	baseHttpClient := uhttp.NewBaseHttpClient(httpClient)
 	return client.NewClient("", "", OrganizationID, "", baseHttpClient)
-}
-
-func ReadFile(fileName string) string {
-	data, err := os.ReadFile("../../test/mockResponses/" + fileName)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return string(data)
 }
