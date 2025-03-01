@@ -1,35 +1,35 @@
+#AUTO GENERATED CODE. UPDATE THE CONFIG IN BATON-TEMPLATE FIRST
 linters-settings:
   exhaustive:
     default-signifies-exhaustive: true
-
   gocritic:
+    enabled-checks:
+      - ruleguard
     # The list of supported checkers can be find in https://go-critic.github.io/overview.
     settings:
       underef:
         # Whether to skip (*x).method() calls where x is a pointer receiver.
         skipRecvDeref: false
-
+      ruleguard:
+        rules: "${configDir}/tools/rules.go"
   govet:
     enable-all: true
     disable:
       - fieldalignment # too strict
       - shadow # complains too much about shadowing errors. All research points to this being fine.
-
   nakedret:
     max-func-lines: 0
-
   nolintlint:
-    allow-no-explanation: [ forbidigo, tracecheck, gomnd, gochecknoinits, makezero ]
+    allow-no-explanation: [forbidigo, tracecheck, gomnd, gochecknoinits, makezero]
     require-explanation: true
     require-specific: true
-
   revive:
     ignore-generated-header: true
     severity: error
     rules:
       - name: atomic
       - name: line-length-limit
-        arguments: [ 200 ]
+        arguments: [200]
       # These are functions that we use without checking the errors often. Most of these can't return an error even
       # though they implement an interface that can.
       - name: unhandled-error
@@ -47,18 +47,10 @@ linters-settings:
           - os.RemoveAll
       - name: var-naming
         arguments: [["ID", "URL", "HTTP", "API"], []]
-
-  varcheck:
-    exported-fields: false # this appears to improperly detect exported variables as unused when they are used from a package with the same name
-
-output:
-  formats:
-    - format: colored-line-number
-
+  tenv:
+    all: true
 linters:
-  disable:
-    - tenv
-    - exportloopref
+  disable-all: true
   enable:
     - errcheck # Errcheck is a program for checking for unchecked errors in go programs. These unchecked errors can be critical bugs in some cases
     - gosimple # Linter for Go source code that specializes in simplifying a code
@@ -91,15 +83,14 @@ linters:
     - nosprintfhostport # Checks for misuse of Sprintf to construct a host with port in a URL.
     - predeclared # find code that shadows one of Go's predeclared identifiers
     - revive # Fast, configurable, extensible, flexible, and beautiful linter for Go. Drop-in replacement of golint.
+    - tenv # tenv is analyzer that detects using os.Setenv instead of t.Setenv since Go1.17
     - tparallel # tparallel detects inappropriate usage of t.Parallel() method in your Go test codes
     - unconvert # Remove unnecessary type conversions
     - usestdlibvars # detect the possibility to use variables/constants from the Go standard library
     - whitespace # Tool for detection of leading and trailing whitespace
-
 issues:
   max-same-issues: 50
-
   exclude-rules:
     # Don't require TODO comments to end in a period
     - source: "(TODO)"
-      linters: [ godot ]
+      linters: [godot]
