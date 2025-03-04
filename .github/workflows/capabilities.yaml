@@ -24,6 +24,10 @@ jobs:
         run: go build -o connector ./cmd/baton-atlassian
 
       - name: Run and save output
+        env:
+          BATON_USER_EMAIL: "example@example.com"
+          BATON_API_TOKEN: "example"
+          BATON_ORGANIZATION: "example"
         run: ./connector capabilities > baton_capabilities.json
 
       - name: Commit changes
