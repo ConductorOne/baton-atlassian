@@ -18,10 +18,10 @@ import (
 
 type AtlassianClient struct {
 	wrapper        *uhttp.BaseHttpClient
-	UserEmail      string
-	ApiToken       string
-	OrganizationID string
-	SiteID         string
+	userEmail      string
+	apiToken       string
+	organizationID string
+	siteID         string
 }
 
 type GraphQLRequest struct {
@@ -38,14 +38,7 @@ const (
 	baseUrl = "https://team.atlassian.com/gateway/api/graphql"
 )
 
-func New(ctx context.Context, atlassianClient *AtlassianClient) (*AtlassianClient, error) {
-	var (
-		userEmail      = atlassianClient.UserEmail
-		apiToken       = atlassianClient.ApiToken
-		organizationID = atlassianClient.OrganizationID
-		siteID         = atlassianClient.SiteID
-	)
-
+func New(ctx context.Context, userEmail, apiToken, organizationID, siteID string) (*AtlassianClient, error) {
 	httpClient, err := uhttp.NewClient(ctx, uhttp.WithLogger(true, ctxzap.Extract(ctx)))
 	if err != nil {
 		return nil, err
@@ -58,10 +51,10 @@ func New(ctx context.Context, atlassianClient *AtlassianClient) (*AtlassianClien
 
 	client := AtlassianClient{
 		wrapper:        cli,
-		UserEmail:      userEmail,
-		ApiToken:       apiToken,
-		OrganizationID: organizationID,
-		SiteID:         siteID,
+		userEmail:      userEmail,
+		apiToken:       apiToken,
+		organizationID: organizationID,
+		siteID:         siteID,
 	}
 
 	return &client, nil
@@ -74,10 +67,10 @@ func NewClient(userEmail, apiToken, organizationID, siteID string, httpClient ..
 	}
 	return &AtlassianClient{
 		wrapper:        wrapper,
-		UserEmail:      userEmail,
-		ApiToken:       apiToken,
-		OrganizationID: organizationID,
-		SiteID:         siteID,
+		userEmail:      userEmail,
+		apiToken:       apiToken,
+		organizationID: organizationID,
+		siteID:         siteID,
 	}
 }
 
@@ -89,7 +82,7 @@ func (c *AtlassianClient) ListTeams(ctx context.Context, options PageOptions) ([
 	nextPageToken := ""
 
 	queryVariables := map[string]interface{}{
-		"organizationId": c.OrganizationID,
+		"organizationId": c.organizationID,
 		"siteId":         "None",
 		"firstTeam":      getPageSize(options.PageSize),
 	}
@@ -203,7 +196,7 @@ func (c *AtlassianClient) doRequest(
 		return nil, nil, err
 	}
 
-	authorizationToken := encoding.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", c.UserEmail, c.ApiToken)))
+	authorizationToken := encoding.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", c.userEmail, c.apiToken)))
 
 	req, err := c.wrapper.NewRequest(
 		ctx,
