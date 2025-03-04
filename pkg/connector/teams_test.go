@@ -27,10 +27,7 @@ func TestMain(m *testing.M) {
 }
 
 func setupTestCase(t *testing.T) func(t *testing.T) {
-	err := os.Setenv("GRAPHQL_DIR", "../graphql/")
-	if err != nil {
-		t.Fatalf("Failed to set GRAPHQL_DIR: %v", err)
-	}
+	t.Setenv("GRAPHQL_DIR", "../graphql/")
 
 	return func(t *testing.T) {
 		// Nothing to tear down
