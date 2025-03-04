@@ -22,18 +22,27 @@ type MemberNode struct {
 }
 
 func TestMain(m *testing.M) {
-	err := os.Setenv("GRAPHQL_DIR", "../graphql/")
-	if err != nil {
-		return
-	}
-
 	code := m.Run()
 	os.Exit(code)
+}
+
+func setupTestCase(t *testing.T) func(t *testing.T) {
+	err := os.Setenv("GRAPHQL_DIR", "../graphql/")
+	if err != nil {
+		t.Fatalf("Failed to set GRAPHQL_DIR: %v", err)
+	}
+
+	return func(t *testing.T) {
+		// Nothing to tear down
+	}
 }
 
 // Tests that the client can fetch teams and users based on the documented API below.
 // https://developer.atlassian.com/platform/atlassian-graphql-api/graphql/#teams_teamSearchV2
 func TestAtlassianClient_GetTeamsAndUsers(t *testing.T) {
+	teardown := setupTestCase(t)
+	defer teardown(t)
+
 	// Create a mock response.
 	mockResponseBody, err := ReadFile("Teams.json")
 	if err != nil {
@@ -128,6 +137,9 @@ func TestAtlassianClient_GetTeamsAndUsers(t *testing.T) {
 }
 
 func TestAtlassianClient_GetTeamsAndUsers_RequestDetails(t *testing.T) {
+	teardown := setupTestCase(t)
+	defer teardown(t)
+
 	// Create a custom RoundTripper to capture the request.
 	var capturedRequest *http.Request
 	mockTransport := &test.MockRoundTripper{
