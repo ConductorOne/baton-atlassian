@@ -10,10 +10,10 @@ func TestTrelloClient_AddCredentials(t *testing.T) {
 
 	client := NewClient(mockUserEmail, mockApiToken, "", "")
 
-	if client.UserEmail != mockUserEmail {
-		t.Errorf("Set user email failed. Expected %s, got %s", mockUserEmail, client.UserEmail)
+	if client.userEmail != mockUserEmail {
+		t.Errorf("Set user email failed. Expected %s, got %s", mockUserEmail, client.userEmail)
 	}
-	if client.ApiToken != mockApiToken {
-		t.Errorf("Set API token failed. Expected %s, got %s", mockApiToken, client.ApiToken)
+	if client.apiToken != mockApiToken {
+		t.Errorf("Set API token failed. Expected %s, got %s", mockApiToken, client.apiToken)
 	}
 }

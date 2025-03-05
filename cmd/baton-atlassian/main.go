@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/conductorone/baton-atlassian/pkg/client"
 	connectorSchema "github.com/conductorone/baton-atlassian/pkg/connector"
 	"github.com/conductorone/baton-sdk/pkg/config"
 	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
@@ -61,9 +60,7 @@ func getConnector(ctx context.Context, v *viper.Viper) (types.ConnectorServer, e
 	organization := v.GetString(organizationField.FieldName)
 	siteId := v.GetString(siteIdField.FieldName)
 
-	atlassianClient := client.NewClient(userEmail, apiToken, organization, siteId)
-
-	connectorBuilder, err := connectorSchema.New(ctx, atlassianClient)
+	connectorBuilder, err := connectorSchema.New(ctx, userEmail, apiToken, organization, siteId)
 	if err != nil {
 		l.Error("error creating connector", zap.Error(err))
 		return nil, err
