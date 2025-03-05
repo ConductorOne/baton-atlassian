@@ -2,12 +2,12 @@ package client
 
 import (
 	"context"
+	"embed"
 	encoding "encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/conductorone/baton-sdk/pkg/annotations"
@@ -37,6 +37,9 @@ type GraphQLResponse struct {
 const (
 	baseUrl = "https://team.atlassian.com/gateway/api/graphql"
 )
+
+//go:embed *.graphql
+var graphqlFiles embed.FS
 
 func New(ctx context.Context, userEmail, apiToken, organizationID, siteID string) (*AtlassianClient, error) {
 	httpClient, err := uhttp.NewClient(ctx, uhttp.WithLogger(true, ctxzap.Extract(ctx)))
@@ -240,8 +243,7 @@ func (c *AtlassianClient) doRequest(
 }
 
 func parseGraphQLQuery(query string, queryVariables map[string]interface{}) (interface{}, error) {
-	dirName := GetEnv("GRAPHQL_DIR", "pkg/graphql/")
-	queryBytes, err := os.ReadFile(dirName + query)
+	queryBytes, err := graphqlFiles.ReadFile(query)
 	if err != nil {
 		return nil, err
 	}
