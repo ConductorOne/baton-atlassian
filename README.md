@@ -9,9 +9,9 @@ Check out [Baton](https://github.com/conductorone/baton) to learn more the proje
 # Prerequisites
 
 1. Follow [Atlassian Support Guide](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/#:~:text=variable%20length%20instead.-,Create%20an%20API%20token,-API%20tokens%20with) to create an API token
-3. Use Atlassian Admin to get the ID of the organization you want to sync:
-    4. URL should look like:
-       `https://admin.atlassian.com/o/{organizationId}/`
+2. Use Atlassian Admin to get the ID of the organization you want to sync:
+    - URL should look like:
+        `https://admin.atlassian.com/o/{organizationId}/`
 
 # Getting Started
 
