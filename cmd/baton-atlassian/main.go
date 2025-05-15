@@ -55,25 +55,13 @@ func getConnector(ctx context.Context, v *viper.Viper) (types.ConnectorServer, e
 		return nil, err
 	}
 
-	//userEmail := v.GetString(userEmailField.FieldName)
-	//apiToken := v.GetString(apiTokenField.FieldName)
 	accessToken := v.GetString(accessTokenField.FieldName)
 	organizationID := v.GetString(organizationIDField.FieldName)
-	//organization := v.GetString(organizationField.FieldName)
-	//siteId := v.GetString(siteIdField.FieldName)
-
-	//if !strings.HasPrefix(organization, "ari:cloud:platform::org/") {
-	//	organization = fmt.Sprintf("ari:cloud:platform::org/%s", organization)
-	//}
 
 	connectorBuilder, err := connectorSchema.New(
 		ctx,
 		accessToken,
 		organizationID,
-		//userEmail,
-		//apiToken,
-		//organization,
-		//siteId,
 	)
 
 	if err != nil {

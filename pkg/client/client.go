@@ -61,22 +61,6 @@ func New(ctx context.Context, clientOptions ...Option) (*AtlassianClient, error)
 	return &client, nil
 }
 
-// NewClient marked for deletion
-// TODO: Delete NewClient
-func NewClient(userEmail, apiToken, organizationID, siteID string, httpClient ...*uhttp.BaseHttpClient) *AtlassianClient {
-	var wrapper = &uhttp.BaseHttpClient{}
-	if httpClient != nil || len(httpClient) != 0 {
-		wrapper = httpClient[0]
-	}
-	return &AtlassianClient{
-		wrapper: wrapper,
-		//userEmail:      userEmail,
-		//apiToken:       apiToken,
-		//organizationID: organizationID,
-		//siteID:         siteID,
-	}
-}
-
 func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) (*[]User, string, error) {
 	var usersResponse UserResponse
 	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(usersEP, c.config.organizationID))
