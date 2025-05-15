@@ -2,11 +2,13 @@ package connector
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/conductorone/baton-atlassian/pkg/client"
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
+	"github.com/conductorone/baton-sdk/pkg/types/grant"
 	"github.com/conductorone/baton-sdk/pkg/types/resource"
 )
 
@@ -52,14 +54,56 @@ func (b *userBuilder) List(ctx context.Context, _ *v2.ResourceId, pToken *pagina
 	return resources, nextPageToken, nil, nil
 }
 
-// Entitlements always returns an empty slice for users.
 func (b *userBuilder) Entitlements(_ context.Context, _ *v2.Resource, _ *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
 	return nil, "", nil, nil
 }
 
-// Grants always returns an empty slice for users since they don't have any entitlements.
-func (b *userBuilder) Grants(_ context.Context, _ *v2.Resource, _ *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
-	return nil, "", nil, nil
+func (b *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
+	var grantResources []*v2.Grant
+
+	bag, pageToken, err := getToken(pToken, userResourceType)
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	userID := resource.Id.Resource
+	roleAssignments, nextPageToken, err := b.client.GetUserRoleAssignments(ctx, pageToken, userID)
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	for _, roleAssignment := range *roleAssignments {
+		// We only want to sync the role assignments for the Atlassian Products
+		if roleAssignment.ResourceOwner == "project" || roleAssignment.ResourceOwner == "goal" || roleAssignment.ResourceOwner == "platform" {
+			continue
+		}
+
+		workspaceResource := &v2.Resource{
+			Id: &v2.ResourceId{
+				ResourceType: workspaceResourceType.Id,
+				Resource:     roleAssignment.ResourceId,
+			},
+		}
+
+		for _, role := range roleAssignment.Roles {
+			entitlementID := fmt.Sprintf("role:%s", role)
+			grantResources = append(
+				grantResources,
+				grant.NewGrant(workspaceResource, entitlementID, resource),
+			)
+		}
+	}
+
+	err = bag.Next(nextPageToken)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	nextPageToken, err = bag.Marshal()
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	return grantResources, nextPageToken, nil, nil
 }
 
 func parseIntoUserResource(user client.User) (*v2.Resource, error) {

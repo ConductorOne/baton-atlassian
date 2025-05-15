@@ -10,6 +10,14 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 )
 
+const (
+	baseURL = "https://api.atlassian.com/admin/v2/orgs"
+
+	usersEP          = "%s/directories/-/users"
+	workspacesEP     = "%s/workspaces"
+	roleAssignmentEP = "%s/directories/-/users/%s/role-assignments"
+)
+
 type AtlassianClient struct {
 	wrapper *uhttp.BaseHttpClient
 	config  Config
@@ -33,12 +41,6 @@ func WithOrganizationID(orgID string) Option {
 		c.config.organizationID = orgID
 	}
 }
-
-const (
-	baseURL      = "https://api.atlassian.com/admin/v2/orgs"
-	usersEP      = "%s/directories/-/users"
-	workspacesEP = "%s/workspaces"
-)
 
 func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) (*[]User, string, error) {
 	var usersResponse UserResponse
@@ -93,6 +95,33 @@ func (c *AtlassianClient) ListWorkspaces(ctx context.Context, pageToken string) 
 
 	nextPageToken := workspacesResponse.Links.Next
 	return &workspacesResponse.Data, nextPageToken, nil
+}
+
+func (c *AtlassianClient) GetUserRoleAssignments(ctx context.Context, pageToken, userID string) (*[]RoleAssignment, string, error) {
+	var roleAssignmentsResponse RoleAssignmentsResponse
+
+	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(roleAssignmentEP, c.config.organizationID, userID))
+	if err != nil {
+		return nil, "", err
+	}
+
+	reqOpts := []ReqOpt{WithPageSize(1)}
+	if pageToken != "" {
+		reqOpts = append(reqOpts, WithPageToken(pageToken))
+	}
+
+	_, err = c.doRequest(ctx,
+		http.MethodGet,
+		requestURL,
+		&roleAssignmentsResponse,
+		nil,
+	)
+	if err != nil {
+		return nil, "", err
+	}
+
+	nextPageToken := roleAssignmentsResponse.Links.Next
+	return &roleAssignmentsResponse.Data, nextPageToken, nil
 }
 
 func (c *AtlassianClient) doRequest(
