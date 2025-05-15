@@ -33,3 +33,46 @@ type User struct {
 		Self string `json:"self"`
 	} `json:"links"`
 }
+
+type WorkspaceResponse struct {
+	Data  []Workspace `json:"data"`
+	Links struct {
+		Next string `json:"next"`
+		Prev string `json:"prev"`
+		Self string `json:"self"`
+	} `json:"links"`
+}
+
+type Workspace struct {
+	Id         string `json:"id"`
+	Type       string `json:"type"`
+	Attributes struct {
+		Name          string   `json:"name"`
+		TypeKey       string   `json:"typeKey"`
+		Type          string   `json:"type"`
+		Owner         string   `json:"owner"`
+		Status        string   `json:"status"`
+		StatusDetails []string `json:"statusDetails"`
+		Icons         struct {
+		} `json:"icons"`
+		Avatars struct {
+		} `json:"avatars"`
+		Labels  []string `json:"labels"`
+		Sandbox struct {
+			Type string `json:"type"`
+		} `json:"sandbox"`
+		Usage     int      `json:"usage"`
+		Capacity  int      `json:"capacity"`
+		CreatedAt string   `json:"createdAt"`
+		CreatedBy string   `json:"createdBy"`
+		UpdatedAt string   `json:"updatedAt"`
+		HostUrl   string   `json:"hostUrl"`
+		Realm     string   `json:"realm"`
+		Regions   []string `json:"regions"`
+	} `json:"attributes"`
+	Links struct {
+		Self string `json:"self"`
+	} `json:"links"`
+	Relationships struct {
+	} `json:"relationships"`
+}
