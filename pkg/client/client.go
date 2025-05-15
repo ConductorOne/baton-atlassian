@@ -35,31 +35,10 @@ func WithOrganizationID(orgID string) Option {
 }
 
 const (
-	baseURL = "https://api.atlassian.com/admin/v2/orgs"
-	usersEP = "%s/directories/-/users"
+	baseURL      = "https://api.atlassian.com/admin/v2/orgs"
+	usersEP      = "%s/directories/-/users"
+	workspacesEP = "%s/workspaces"
 )
-
-func New(ctx context.Context, clientOptions ...Option) (*AtlassianClient, error) {
-	httpClient, err := uhttp.NewClient(ctx, uhttp.WithLogger(true, ctxzap.Extract(ctx)))
-	if err != nil {
-		return nil, err
-	}
-
-	cli, err := uhttp.NewBaseHttpClientWithContext(context.Background(), httpClient)
-	if err != nil {
-		return nil, err
-	}
-
-	client := AtlassianClient{
-		wrapper: cli,
-	}
-
-	for _, opt := range clientOptions {
-		opt(&client)
-	}
-
-	return &client, nil
-}
 
 func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) (*[]User, string, error) {
 	var usersResponse UserResponse
@@ -68,7 +47,7 @@ func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) (*[]U
 		return nil, "", err
 	}
 
-	reqOpts := []ReqOpt{WithPageSize(1)}
+	reqOpts := []ReqOpt{WithPageSize(maxItemsPerPage)}
 	if pageToken != "" {
 		reqOpts = append(reqOpts, WithPageToken(pageToken))
 	}
@@ -86,6 +65,34 @@ func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) (*[]U
 	nextPageToken := usersResponse.Links.Next
 
 	return &usersResponse.Data, nextPageToken, nil
+}
+
+func (c *AtlassianClient) ListWorkspaces(ctx context.Context, pageToken string) (*[]Workspace, string, error) {
+	var workspacesResponse WorkspaceResponse
+	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(workspacesEP, c.config.organizationID))
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Pagination for this endpoint must be handled by sending the data in a json body instead of a query param.
+	// If you sent the 'cursor' field, no others field can be provided, so the limit cannot be specified and should leave the API use the default value.
+	body := struct {
+		Cursor string `json:"cursor,omitempty"`
+	}{
+		Cursor: pageToken,
+	}
+	_, err = c.doRequest(ctx,
+		http.MethodPost,
+		requestURL,
+		&workspacesResponse,
+		body,
+	)
+	if err != nil {
+		return nil, "", err
+	}
+
+	nextPageToken := workspacesResponse.Links.Next
+	return &workspacesResponse.Data, nextPageToken, nil
 }
 
 func (c *AtlassianClient) doRequest(
@@ -110,11 +117,16 @@ func (c *AtlassianClient) doRequest(
 		o(urlAddress)
 	}
 
+	reqOptions := []uhttp.RequestOption{uhttp.WithBearerToken(c.config.accessToken)}
+	if body != nil {
+		reqOptions = append(reqOptions, uhttp.WithJSONBody(body))
+	}
+
 	req, err := c.wrapper.NewRequest(
 		ctx,
 		method,
 		urlAddress,
-		uhttp.WithBearerToken(c.config.accessToken),
+		reqOptions...,
 	)
 	if err != nil {
 		return nil, err
@@ -142,4 +154,26 @@ func (c *AtlassianClient) doRequest(
 	}
 
 	return resp.Header, nil
+}
+
+func New(ctx context.Context, clientOptions ...Option) (*AtlassianClient, error) {
+	httpClient, err := uhttp.NewClient(ctx, uhttp.WithLogger(true, ctxzap.Extract(ctx)))
+	if err != nil {
+		return nil, err
+	}
+
+	cli, err := uhttp.NewBaseHttpClientWithContext(context.Background(), httpClient)
+	if err != nil {
+		return nil, err
+	}
+
+	client := AtlassianClient{
+		wrapper: cli,
+	}
+
+	for _, opt := range clientOptions {
+		opt(&client)
+	}
+
+	return &client, nil
 }
