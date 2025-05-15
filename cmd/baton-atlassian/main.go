@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	connectorSchema "github.com/conductorone/baton-atlassian/pkg/connector"
 	"github.com/conductorone/baton-sdk/pkg/config"
@@ -56,21 +55,13 @@ func getConnector(ctx context.Context, v *viper.Viper) (types.ConnectorServer, e
 		return nil, err
 	}
 
-	userEmail := v.GetString(userEmailField.FieldName)
-	apiToken := v.GetString(apiTokenField.FieldName)
-	organization := v.GetString(organizationField.FieldName)
-	siteId := v.GetString(siteIdField.FieldName)
-
-	if !strings.HasPrefix(organization, "ari:cloud:platform::org/") {
-		organization = fmt.Sprintf("ari:cloud:platform::org/%s", organization)
-	}
+	accessToken := v.GetString(accessTokenField.FieldName)
+	organizationID := v.GetString(organizationIDField.FieldName)
 
 	connectorBuilder, err := connectorSchema.New(
 		ctx,
-		userEmail,
-		apiToken,
-		organization,
-		siteId,
+		accessToken,
+		organizationID,
 	)
 
 	if err != nil {

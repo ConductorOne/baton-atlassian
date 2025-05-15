@@ -2,9 +2,6 @@ package test
 
 import (
 	"net/http"
-
-	"github.com/conductorone/baton-atlassian/pkg/client"
-	"github.com/conductorone/baton-sdk/pkg/uhttp"
 )
 
 var (
@@ -34,12 +31,4 @@ func (m *MockRoundTripper) SetRoundTrip(roundTrip func(*http.Request) (*http.Res
 
 func (t *TestRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
 	return t.response, t.err
-}
-
-// Helper function to create a test client with custom transport.
-func NewTestClient(response *http.Response, err error) *client.AtlassianClient {
-	transport := &TestRoundTripper{response: response, err: err}
-	httpClient := &http.Client{Transport: transport}
-	baseHttpClient := uhttp.NewBaseHttpClient(httpClient)
-	return client.NewClient("", "", OrganizationID, "", baseHttpClient)
 }
