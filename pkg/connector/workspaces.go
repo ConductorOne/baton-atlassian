@@ -21,8 +21,8 @@ var atlassianRoles = []string{
 	"atlassian/customer",
 	"atlassian/basic",
 	"atlassian/stakeholder",
-	//"atlassian/site-admin",
-	//"atlassian/org-admin",
+	"atlassian/site-admin",
+	"atlassian/org-admin",
 }
 
 type workspaceBuilder struct {

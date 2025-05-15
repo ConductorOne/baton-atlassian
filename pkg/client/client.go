@@ -105,16 +105,16 @@ func (c *AtlassianClient) GetUserRoleAssignments(ctx context.Context, pageToken,
 		return nil, "", err
 	}
 
-	reqOpts := []ReqOpt{WithPageSize(1)}
+	reqOpts := []ReqOpt{WithPageSize(maxItemsPerPage)}
 	if pageToken != "" {
 		reqOpts = append(reqOpts, WithPageToken(pageToken))
 	}
-
 	_, err = c.doRequest(ctx,
 		http.MethodGet,
 		requestURL,
 		&roleAssignmentsResponse,
 		nil,
+		reqOpts...,
 	)
 	if err != nil {
 		return nil, "", err

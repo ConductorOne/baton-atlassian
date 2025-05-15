@@ -73,7 +73,14 @@ func (b *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 	}
 
 	for _, roleAssignment := range *roleAssignments {
-		// We only want to sync the role assignments for the Atlassian Products
+		// We only want to sync the role assignments for the Atlassian Products.
+		// The ignored scopes refers to:
+		//     - project: This is a specific context within Jira. Roles with 'project' as the resource owner are typically project roles defined
+		// within a particular Jira project (e.g., "Administrators", "Developers", "Users" within a single Jira project).
+		//     - goal: This likely refers to roles related to Atlas Goals. If the organization uses Atlas for setting and tracking goals,
+		// roles assigned within that product might have 'goal' as the resource owner.
+		//     - platform: This generally refers to roles related to the core Atlassian platform itself. This could include roles related
+		// to user accounts, organization settings not tied to a specific product, or platform-wide permissions.
 		if roleAssignment.ResourceOwner == "project" || roleAssignment.ResourceOwner == "goal" || roleAssignment.ResourceOwner == "platform" {
 			continue
 		}
