@@ -76,3 +76,18 @@ type Workspace struct {
 	Relationships struct {
 	} `json:"relationships"`
 }
+
+type RoleAssignmentsResponse struct {
+	Data  []RoleAssignment `json:"data"`
+	Links struct {
+		Next string `json:"next"`
+		Prev string `json:"prev"`
+		Self string `json:"self"`
+	} `json:"links"`
+}
+
+type RoleAssignment struct {
+	ResourceId    string   `json:"resourceId"`
+	ResourceOwner string   `json:"resourceOwner"`
+	Roles         []string `json:"roles"`
+}
