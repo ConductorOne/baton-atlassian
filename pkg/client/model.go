@@ -77,6 +77,29 @@ type Workspace struct {
 	} `json:"relationships"`
 }
 
+type GroupResponse struct {
+	Data  []Group `json:"data"`
+	Links struct {
+		Next string `json:"next"`
+		Prev string `json:"prev"`
+		Self string `json:"self"`
+	} `json:"links"`
+}
+
+type Group struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	DirectoryId string `json:"directoryId"`
+	Counts      struct {
+		Users     int `json:"users"`
+		Resources int `json:"resources"`
+	} `json:"counts"`
+	Links struct {
+		Self string `json:"self"`
+	} `json:"links"`
+}
+
 type RoleAssignmentsResponse struct {
 	Data  []RoleAssignment `json:"data"`
 	Links struct {

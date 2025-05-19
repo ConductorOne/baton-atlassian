@@ -13,9 +13,11 @@ import (
 const (
 	baseURL = "https://api.atlassian.com/admin/v2/orgs"
 
-	usersEP          = "%s/directories/-/users"
-	workspacesEP     = "%s/workspaces"
-	roleAssignmentEP = "%s/directories/-/users/%s/role-assignments"
+	usersEP                = "%s/directories/-/users"
+	workspacesEP           = "%s/workspaces"
+	groupsEP               = "%s/directories/-/groups"
+	usersRoleAssignmentEP  = "%s/directories/-/users/%s/role-assignments"
+	groupsRoleAssignmentEP = "%s/directories/-/groups/%s/role-assignments"
 )
 
 type AtlassianClient struct {
@@ -97,10 +99,64 @@ func (c *AtlassianClient) ListWorkspaces(ctx context.Context, pageToken string) 
 	return &workspacesResponse.Data, nextPageToken, nil
 }
 
+func (c *AtlassianClient) ListGroups(ctx context.Context, pageToken string) (*[]Group, string, error) {
+	var groupsResponse GroupResponse
+	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(groupsEP, c.config.organizationID))
+	if err != nil {
+		return nil, "", err
+	}
+
+	reqOpts := []ReqOpt{WithPageSize(maxItemsPerPage)}
+	if pageToken != "" {
+		reqOpts = append(reqOpts, WithPageToken(pageToken))
+	}
+	_, err = c.doRequest(ctx,
+		http.MethodGet,
+		requestURL,
+		&groupsResponse,
+		nil,
+		reqOpts...,
+	)
+	if err != nil {
+		return nil, "", err
+	}
+
+	nextPageToken := groupsResponse.Links.Next
+
+	return &groupsResponse.Data, nextPageToken, nil
+}
+
 func (c *AtlassianClient) GetUserRoleAssignments(ctx context.Context, pageToken, userID string) (*[]RoleAssignment, string, error) {
 	var roleAssignmentsResponse RoleAssignmentsResponse
 
-	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(roleAssignmentEP, c.config.organizationID, userID))
+	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(usersRoleAssignmentEP, c.config.organizationID, userID))
+	if err != nil {
+		return nil, "", err
+	}
+
+	reqOpts := []ReqOpt{WithPageSize(maxItemsPerPage)}
+	if pageToken != "" {
+		reqOpts = append(reqOpts, WithPageToken(pageToken))
+	}
+	_, err = c.doRequest(ctx,
+		http.MethodGet,
+		requestURL,
+		&roleAssignmentsResponse,
+		nil,
+		reqOpts...,
+	)
+	if err != nil {
+		return nil, "", err
+	}
+
+	nextPageToken := roleAssignmentsResponse.Links.Next
+	return &roleAssignmentsResponse.Data, nextPageToken, nil
+}
+
+func (c *AtlassianClient) GetGroupRoleAssignments(ctx context.Context, pageToken, groupID string) (*[]RoleAssignment, string, error) {
+	var roleAssignmentsResponse RoleAssignmentsResponse
+
+	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(groupsRoleAssignmentEP, c.config.organizationID, groupID))
 	if err != nil {
 		return nil, "", err
 	}

@@ -14,3 +14,9 @@ var workspaceResourceType = &v2.ResourceType{
 	Id:          "workspace",
 	DisplayName: "Workspace",
 }
+
+var groupResourceType = &v2.ResourceType{
+	Id:          "group",
+	DisplayName: "Group",
+	Traits:      []v2.ResourceType_Trait{v2.ResourceType_TRAIT_GROUP},
+}
