@@ -74,7 +74,7 @@ func (b *workspaceBuilder) Entitlements(_ context.Context, resource *v2.Resource
 		displayName := fmt.Sprintf("%s on %s", role, resource.DisplayName)
 		description := fmt.Sprintf("Role '%s' applied in %s.", role, resource.DisplayName)
 		assigmentOptions := []entitlement.EntitlementOption{
-			entitlement.WithGrantableTo(userResourceType),
+			entitlement.WithGrantableTo(userResourceType, groupResourceType),
 			entitlement.WithDescription(description),
 			entitlement.WithDisplayName(displayName),
 		}
@@ -85,6 +85,7 @@ func (b *workspaceBuilder) Entitlements(_ context.Context, resource *v2.Resource
 	return workspaceEntitlements, "", nil, nil
 }
 
+// Grants are created on both Users and Groups resources, since the model is made with that approach, and it's easier and more efficient like this.
 func (b *workspaceBuilder) Grants(_ context.Context, _ *v2.Resource, _ *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
 	return nil, "", nil, nil
 }

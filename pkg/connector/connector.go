@@ -22,6 +22,7 @@ func (d *Connector) ResourceSyncers(_ context.Context) []connectorbuilder.Resour
 	return []connectorbuilder.ResourceSyncer{
 		newUserBuilder(d.client),
 		newWorkspaceBuilder(d.client),
+		newGroupBuilder(d.client),
 	}
 }
 
