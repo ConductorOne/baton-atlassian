@@ -35,7 +35,7 @@ func (d *Connector) Asset(_ context.Context, _ *v2.AssetRef) (string, io.ReadClo
 // Metadata returns metadata about the connector.
 func (d *Connector) Metadata(_ context.Context) (*v2.ConnectorMetadata, error) {
 	return &v2.ConnectorMetadata{
-		DisplayName: "Atlassian Connector",
+		DisplayName: "Atlassian Core",
 		Description: "Connector to sync data from an Atlassian Organization",
 	}, nil
 }
@@ -47,7 +47,7 @@ func (d *Connector) Validate(_ context.Context) (annotations.Annotations, error)
 }
 
 // New returns a new instance of the connector.
-func New(ctx context.Context, accessToken, organizationID string /*userEmail, apiToken, organizationID, siteID string*/) (*Connector, error) {
+func New(ctx context.Context, accessToken, organizationID string) (*Connector, error) {
 	l := ctxzap.Extract(ctx)
 
 	atlassianClient, err := client.New(

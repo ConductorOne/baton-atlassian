@@ -44,7 +44,7 @@ func WithOrganizationID(orgID string) Option {
 	}
 }
 
-func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) (*[]User, string, error) {
+func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) ([]User, string, error) {
 	var usersResponse UserResponse
 	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(usersEP, c.config.organizationID))
 	if err != nil {
@@ -68,10 +68,10 @@ func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) (*[]U
 
 	nextPageToken := usersResponse.Links.Next
 
-	return &usersResponse.Data, nextPageToken, nil
+	return usersResponse.Data, nextPageToken, nil
 }
 
-func (c *AtlassianClient) ListWorkspaces(ctx context.Context, pageToken string) (*[]Workspace, string, error) {
+func (c *AtlassianClient) ListWorkspaces(ctx context.Context, pageToken string) ([]Workspace, string, error) {
 	var workspacesResponse WorkspaceResponse
 	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(workspacesEP, c.config.organizationID))
 	if err != nil {
@@ -96,10 +96,10 @@ func (c *AtlassianClient) ListWorkspaces(ctx context.Context, pageToken string) 
 	}
 
 	nextPageToken := workspacesResponse.Links.Next
-	return &workspacesResponse.Data, nextPageToken, nil
+	return workspacesResponse.Data, nextPageToken, nil
 }
 
-func (c *AtlassianClient) ListGroups(ctx context.Context, pageToken string) (*[]Group, string, error) {
+func (c *AtlassianClient) ListGroups(ctx context.Context, pageToken string) ([]Group, string, error) {
 	var groupsResponse GroupResponse
 	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(groupsEP, c.config.organizationID))
 	if err != nil {
@@ -123,10 +123,10 @@ func (c *AtlassianClient) ListGroups(ctx context.Context, pageToken string) (*[]
 
 	nextPageToken := groupsResponse.Links.Next
 
-	return &groupsResponse.Data, nextPageToken, nil
+	return groupsResponse.Data, nextPageToken, nil
 }
 
-func (c *AtlassianClient) GetUserRoleAssignments(ctx context.Context, pageToken, userID string) (*[]RoleAssignment, string, error) {
+func (c *AtlassianClient) GetUserRoleAssignments(ctx context.Context, pageToken, userID string) ([]RoleAssignment, string, error) {
 	var roleAssignmentsResponse RoleAssignmentsResponse
 
 	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(usersRoleAssignmentEP, c.config.organizationID, userID))
@@ -150,10 +150,10 @@ func (c *AtlassianClient) GetUserRoleAssignments(ctx context.Context, pageToken,
 	}
 
 	nextPageToken := roleAssignmentsResponse.Links.Next
-	return &roleAssignmentsResponse.Data, nextPageToken, nil
+	return roleAssignmentsResponse.Data, nextPageToken, nil
 }
 
-func (c *AtlassianClient) GetGroupRoleAssignments(ctx context.Context, pageToken, groupID string) (*[]RoleAssignment, string, error) {
+func (c *AtlassianClient) GetGroupRoleAssignments(ctx context.Context, pageToken, groupID string) ([]RoleAssignment, string, error) {
 	var roleAssignmentsResponse RoleAssignmentsResponse
 
 	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(groupsRoleAssignmentEP, c.config.organizationID, groupID))
@@ -177,7 +177,7 @@ func (c *AtlassianClient) GetGroupRoleAssignments(ctx context.Context, pageToken
 	}
 
 	nextPageToken := roleAssignmentsResponse.Links.Next
-	return &roleAssignmentsResponse.Data, nextPageToken, nil
+	return roleAssignmentsResponse.Data, nextPageToken, nil
 }
 
 func (c *AtlassianClient) doRequest(

@@ -5,6 +5,13 @@ import (
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 )
 
+// These constants will be used when verify ownership of roles assignments and filter them.
+const (
+	resourceOwnerPlatform = "platform"
+	resourceOwnerProject  = "project"
+	resourceOwnerGoal     = "goal"
+)
+
 func getToken(pToken *pagination.Token, resourceType *v2.ResourceType) (*pagination.Bag, string, error) {
 	var pageToken string
 	_, bag, err := unmarshalSkipToken(pToken)

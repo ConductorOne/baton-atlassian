@@ -47,7 +47,7 @@ func (b *workspaceBuilder) List(ctx context.Context, _ *v2.ResourceId, pToken *p
 		return nil, "", nil, err
 	}
 
-	for _, workspace := range *workspaces {
+	for _, workspace := range workspaces {
 		workspaceResource, err := parseIntoWorkspaceResource(workspace)
 		if err != nil {
 			return nil, "", nil, err

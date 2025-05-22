@@ -34,7 +34,7 @@ func (b *groupBuilder) List(ctx context.Context, _ *v2.ResourceId, pToken *pagin
 		return nil, "", nil, err
 	}
 
-	for _, group := range *groups {
+	for _, group := range groups {
 		groupResource, err := parseIntoGroupResource(group)
 		if err != nil {
 			return nil, "", nil, err
@@ -58,6 +58,10 @@ func (b *groupBuilder) Entitlements(_ context.Context, _ *v2.Resource, _ *pagina
 	return nil, "", nil, nil
 }
 
+// Grants function will be creating the grants for the Workspaces.
+//
+// Groups have Roles assigned that gives them permissions on each Workspace (product sites).
+// We don't create group-memberships to users since this API doesn't retrieve that data. However, knowing the grants per Group is what we want.
 func (b *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
 	var grantResources []*v2.Grant
 
@@ -72,7 +76,7 @@ func (b *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken
 		return nil, "", nil, err
 	}
 
-	for _, roleAssignment := range *roleAssignments {
+	for _, roleAssignment := range roleAssignments {
 		// We only want to sync the role assignments for the Atlassian Products.
 		// The ignored scopes refers to:
 		//     - project: This is a specific context within Jira. Roles with 'project' as the resource owner are typically project roles defined
@@ -81,7 +85,7 @@ func (b *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken
 		// roles assigned within that product might have 'goal' as the resource owner.
 		//     - platform: This generally refers to roles related to the core Atlassian platform itself. This could include roles related
 		// to user accounts, organization settings not tied to a specific product, or platform-wide permissions.
-		if roleAssignment.ResourceOwner == "project" || roleAssignment.ResourceOwner == "goal" || roleAssignment.ResourceOwner == "platform" {
+		if roleAssignment.ResourceOwner == resourceOwnerProject || roleAssignment.ResourceOwner == resourceOwnerGoal || roleAssignment.ResourceOwner == resourceOwnerPlatform {
 			continue
 		}
 

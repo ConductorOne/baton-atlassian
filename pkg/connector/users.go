@@ -34,7 +34,7 @@ func (b *userBuilder) List(ctx context.Context, _ *v2.ResourceId, pToken *pagina
 		return nil, "", nil, err
 	}
 
-	for _, user := range *users {
+	for _, user := range users {
 		userResource, err := parseIntoUserResource(user)
 		if err != nil {
 			return nil, "", nil, err
@@ -58,6 +58,9 @@ func (b *userBuilder) Entitlements(_ context.Context, _ *v2.Resource, _ *paginat
 	return nil, "", nil, nil
 }
 
+// Grants function will be creating the grants for the Workspaces.
+//
+// Users have Roles assigned that gives them permissions on each Workspace (product sites).
 func (b *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
 	var grantResources []*v2.Grant
 
@@ -72,7 +75,7 @@ func (b *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 		return nil, "", nil, err
 	}
 
-	for _, roleAssignment := range *roleAssignments {
+	for _, roleAssignment := range roleAssignments {
 		// We only want to sync the role assignments for the Atlassian Products.
 		// The ignored scopes refers to:
 		//     - project: This is a specific context within Jira. Roles with 'project' as the resource owner are typically project roles defined
@@ -81,7 +84,7 @@ func (b *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 		// roles assigned within that product might have 'goal' as the resource owner.
 		//     - platform: This generally refers to roles related to the core Atlassian platform itself. This could include roles related
 		// to user accounts, organization settings not tied to a specific product, or platform-wide permissions.
-		if roleAssignment.ResourceOwner == "project" || roleAssignment.ResourceOwner == "goal" || roleAssignment.ResourceOwner == "platform" {
+		if roleAssignment.ResourceOwner == resourceOwnerProject || roleAssignment.ResourceOwner == resourceOwnerGoal || roleAssignment.ResourceOwner == resourceOwnerPlatform {
 			continue
 		}
 
@@ -133,6 +136,7 @@ func parseIntoUserResource(user client.User) (*v2.Resource, error) {
 		resource.WithUserProfile(profile),
 		resource.WithStatus(userStatus),
 		resource.WithUserLogin(user.Email),
+		resource.WithEmail(user.Email, true),
 	}
 
 	return resource.NewUserResource(
