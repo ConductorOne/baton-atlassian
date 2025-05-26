@@ -10,8 +10,13 @@ var userResourceType = &v2.ResourceType{
 	Traits:      []v2.ResourceType_Trait{v2.ResourceType_TRAIT_USER},
 }
 
-var teamResourceType = &v2.ResourceType{
-	Id:          "team",
-	DisplayName: "Team",
+var workspaceResourceType = &v2.ResourceType{
+	Id:          "workspace",
+	DisplayName: "Workspace",
+}
+
+var groupResourceType = &v2.ResourceType{
+	Id:          "group",
+	DisplayName: "Group",
 	Traits:      []v2.ResourceType_Trait{v2.ResourceType_TRAIT_GROUP},
 }

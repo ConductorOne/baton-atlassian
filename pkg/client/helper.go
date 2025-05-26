@@ -1,25 +1,34 @@
 package client
 
-import "os"
+import (
+	"net/url"
+	"strconv"
+)
 
-const ItemsPerPage = 100
+// maxItemsPerPage that the API allows is 100. The default value is 20.
+const maxItemsPerPage = 100
 
-type PageOptions struct {
-	PageSize  int
-	PageToken string
+type ReqOpt func(reqURL *url.URL)
+
+func WithPageSize(pageSize int) ReqOpt {
+	if pageSize < 0 {
+		pageSize = 0
+	}
+	if pageSize > maxItemsPerPage {
+		pageSize = maxItemsPerPage
+	}
+
+	return WithQueryParam("limit", strconv.Itoa(pageSize))
 }
 
-func getPageSize(pageSize int) int {
-	if pageSize <= 0 || pageSize > ItemsPerPage {
-		pageSize = ItemsPerPage
-	}
-	return pageSize
+func WithPageToken(pageToken string) ReqOpt {
+	return WithQueryParam("cursor", pageToken)
 }
 
-func GetEnv(key string, defaultVal string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		return defaultVal
+func WithQueryParam(key string, value string) ReqOpt {
+	return func(reqURL *url.URL) {
+		q := reqURL.Query()
+		q.Set(key, value)
+		reqURL.RawQuery = q.Encode()
 	}
-	return value
 }
