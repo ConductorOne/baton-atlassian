@@ -6,7 +6,7 @@
 2. Can the connector provision any resources? If so, which ones?
 - This connector can provision User Roles, meaning that you can Grant or Revoke roles on different Workspaces (product-sites) withing the organization.
   Customer must consider that depending on their settings not all roles may be available for all sites. There are some of them that could be enabled or not on certain sites; there may be other roles that can be only configured if the user meets certain requirements.
-  The connector is unable to determinate if which will be effectively available, but a descriptive error message should communicate the situation when a Grant can be provisioned.
+  The connector is unable to determinate which will be effectively available, but a descriptive error message should communicate the situation when a Grant can't be provisioned.
 
 ## Connector credentials
 
@@ -32,7 +32,8 @@
           -> I need access to the indicated endpoints of the Atlassian Administration Cloud API. The documentations stands that access should be requested to the support team.
         6. On the "What is the impact to your business?" drop-down box, "Level 3" should be selected.
         7. On "Give us more details*" section, the following text must be included:
-          -> I need access to the following endpoints of the Atlassian Administration Cloud API:
+          ->
+             I need access to the following endpoints of the Atlassian Administration Cloud API:
              * Grant User Access: https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/\#api-v1-orgs-orgid-users-userid-roles-assign-post
              * Revoke User Access: https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/\#api-v1-orgs-orgid-users-userid-roles-revoke-post
              * Invite User to Org: https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/\#api-v1-orgs-orgid-users-invite-post
@@ -41,6 +42,7 @@
              My organization ID is: <ATLASSIAN_ORGANIZATION_ID>
 
              Thanks in advance for your help!
+
         8. Please be sure to replace "<ATLASSIAN_ORGANIZATION_ID>" with the corresponding Organization ID.
 
 
