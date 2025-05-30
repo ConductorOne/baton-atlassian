@@ -4,7 +4,9 @@
 - The Atlassian connector syncs Users, Groups and Workspaces.
 
 2. Can the connector provision any resources? If so, which ones?
-- At the moment, this connector is unable to provision resources.
+- This connector can provision User Roles, meaning that you can Grant or Revoke roles on different Workspaces (product-sites) withing the organization.
+  Customer must consider that depending on their settings not all roles may be available for all sites. There are some of them that could be enabled or not on certain sites; there may be other roles that can be only configured if the user meets certain requirements.
+  The connector is unable to determinate if which will be effectively available, but a descriptive error message should communicate the situation when a Grant can be provisioned.
 
 ## Connector credentials
 
@@ -18,9 +20,32 @@
       When selected, a side menu on the left side of the screen should be visible with a section named after "API Keys". In that section, users will be able to generate the Keys.
       Atlassian Support Guide to create API Keys: https://support.atlassian.com/organization-administration/docs/manage-an-organization-with-the-admin-apis/
 
+    - Provisioning:
+      To be able to configure roles through the API, Customers need to raise a ticket to Atlassian Support (https://support.atlassian.com/contact/#/) asking for them to enable certain endpoints.
+      Once they enter on the Atlassian Support Portal, login into their admin account for the organization and select Contact: https://support.atlassian.com/contact/#/
+      They should follow these steps:
+        1. In the drop-down box under the "What can we help you with?" they should select the option: "Technical issues and bugs"
+        2. In the drop-down box under the "Which product is this for?" they should select any site of their Cloud products. For example, one JIRA instance.
+        3. A big textbox should appear. Under it, the "Raise a support request" text should be visible. The customer should click on it to deploy the other data inputs and to allow them to create the ticket for Atlassian Support Team.
+        4. The email of the admin user should be indicated under the "Include admin or billing/technical/end-customer contact, or additional participants on this ticket" label.
+        5. On the "Summarize your issue" text box, customers should enter this:
+          -> I need access to the indicated endpoints of the Atlassian Administration Cloud API. The documentations stands that access should be requested to the support team.
+        6. On the "What is the impact to your business?" drop-down box, "Level 3" should be selected.
+        7. On "Give us more details*" section, the following text must be included:
+          -> I need access to the following endpoints of the Atlassian Administration Cloud API:
+             * Grant User Access: https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/\#api-v1-orgs-orgid-users-userid-roles-assign-post
+             * Revoke User Access: https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/\#api-v1-orgs-orgid-users-userid-roles-revoke-post
+             * Invite User to Org: https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/\#api-v1-orgs-orgid-users-invite-post
+             I'm working with an API Client and I need to be able to use these endpoints on my Atlassian Organization.
+
+             My organization ID is: <ATLASSIAN_ORGANIZATION_ID>
+
+             Thanks in advance for your help!
+        8. Please be sure to replace "<ATLASSIAN_ORGANIZATION_ID>" with the corresponding Organization ID.
+
+
    * Does the credential need any specific scopes or permissions? If so, list them here.
     - The user should be an admin of the org, and the key should be created with "no scopes" in order to access the needed API Endpoints and resources.
-    (some specific scopes may be required when including provisioning at this connector)
 
    * If applicable: Is the list of scopes or permissions different to sync (read) versus provision (read-write)? If so, list the difference here.
    - This doesn't apply when the API Key is generated with an admin user and "no scopes" specified.
