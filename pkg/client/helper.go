@@ -32,3 +32,15 @@ func WithQueryParam(key string, value string) ReqOpt {
 		reqURL.RawQuery = q.Encode()
 	}
 }
+
+type RoleAssignmentBody struct {
+	Role     string `json:"role"`
+	Resource string `json:"resource"`
+}
+
+/*
+{
+  "role": "atlassian/user",
+  "resource": "ari:cloud:jira-software::site/c54288ee-09ee-4a1c-baf4-388062a8b079"
+}
+*/
