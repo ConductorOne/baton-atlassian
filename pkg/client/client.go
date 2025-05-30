@@ -229,7 +229,6 @@ func (c *AtlassianClient) RevokeRoleFromUser(ctx context.Context, userID, worksp
 	}
 
 	return nil
-
 }
 
 func (c *AtlassianClient) doRequest(
@@ -277,7 +276,7 @@ func (c *AtlassianClient) doRequest(
 		doOptions := []uhttp.DoOption{
 			uhttp.WithErrorResponse(&apiErr),
 		}
-		
+
 		if res != nil {
 			doOptions = append(doOptions, uhttp.WithResponse(&res))
 		}
