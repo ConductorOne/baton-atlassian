@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 )
@@ -38,9 +39,9 @@ type RoleAssignmentBody struct {
 	Resource string `json:"resource"`
 }
 
-/*
-{
-  "role": "atlassian/user",
-  "resource": "ari:cloud:jira-software::site/c54288ee-09ee-4a1c-baf4-388062a8b079"
+func (er *APIError) Message() string {
+	if len(er.Errors) > 0 {
+		return fmt.Sprintf("API error response detail: %s", er.Errors[0].Detail)
+	}
+	return "Error response empty"
 }
-*/

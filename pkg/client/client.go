@@ -241,8 +241,9 @@ func (c *AtlassianClient) doRequest(
 	reqOpts ...ReqOpt,
 ) (http.Header, error) {
 	var (
-		resp *http.Response
-		err  error
+		resp   *http.Response
+		apiErr APIError
+		err    error
 	)
 
 	urlAddress, err := url.Parse(endpointUrl)
@@ -254,7 +255,9 @@ func (c *AtlassianClient) doRequest(
 		o(urlAddress)
 	}
 
-	reqOptions := []uhttp.RequestOption{uhttp.WithBearerToken(c.config.accessToken)}
+	reqOptions := []uhttp.RequestOption{
+		uhttp.WithBearerToken(c.config.accessToken),
+	}
 	if body != nil {
 		reqOptions = append(reqOptions, uhttp.WithJSONBody(body))
 	}
@@ -271,7 +274,10 @@ func (c *AtlassianClient) doRequest(
 
 	switch method {
 	case http.MethodGet, http.MethodPut, http.MethodPost:
-		doOptions := []uhttp.DoOption{}
+		doOptions := []uhttp.DoOption{
+			uhttp.WithErrorResponse(&apiErr),
+		}
+		
 		if res != nil {
 			doOptions = append(doOptions, uhttp.WithResponse(&res))
 		}
