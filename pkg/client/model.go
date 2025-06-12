@@ -2,6 +2,16 @@ package client
 
 import "time"
 
+type APIError struct {
+	Errors []struct {
+		Id     string `json:"id"`
+		Status string `json:"status"`
+		Code   string `json:"code"`
+		Title  string `json:"title"`
+		Detail string `json:"detail"`
+	} `json:"errors"`
+}
+
 type UserResponse struct {
 	Data  []User `json:"data"`
 	Links struct {

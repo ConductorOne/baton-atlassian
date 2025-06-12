@@ -11,13 +11,16 @@ import (
 )
 
 const (
-	baseURL = "https://api.atlassian.com/admin/v2/orgs"
+	baseURL = "https://api.atlassian.com/admin"
 
-	usersEP                = "%s/directories/-/users"
-	workspacesEP           = "%s/workspaces"
-	groupsEP               = "%s/directories/-/groups"
-	usersRoleAssignmentEP  = "%s/directories/-/users/%s/role-assignments"
-	groupsRoleAssignmentEP = "%s/directories/-/groups/%s/role-assignments"
+	usersEP                = "v2/orgs/%s/directories/-/users"
+	workspacesEP           = "v2/orgs/%s/workspaces"
+	groupsEP               = "v2/orgs/%s/directories/-/groups"
+	usersRoleAssignmentEP  = "v2/orgs/%s/directories/-/users/%s/role-assignments"
+	groupsRoleAssignmentEP = "v2/orgs/%s/directories/-/groups/%s/role-assignments"
+
+	userAssignRolesEP = "v1/orgs/%s/users/%s/roles/assign"
+	userRevokeRolesEP = "v1/orgs/%s/users/%s/roles/revoke"
 )
 
 type AtlassianClient struct {
@@ -180,6 +183,54 @@ func (c *AtlassianClient) GetGroupRoleAssignments(ctx context.Context, pageToken
 	return roleAssignmentsResponse.Data, nextPageToken, nil
 }
 
+func (c *AtlassianClient) AssignRoleToUser(ctx context.Context, userID, workspaceID, roleID string) error {
+	requestBody := RoleAssignmentBody{
+		Role:     roleID,
+		Resource: workspaceID,
+	}
+
+	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(userAssignRolesEP, c.config.organizationID, userID))
+	if err != nil {
+		return err
+	}
+
+	_, err = c.doRequest(ctx,
+		http.MethodPost,
+		requestURL,
+		nil,
+		requestBody,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *AtlassianClient) RevokeRoleFromUser(ctx context.Context, userID, workspaceID, roleID string) error {
+	requestBody := RoleAssignmentBody{
+		Role:     roleID,
+		Resource: workspaceID,
+	}
+
+	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(userRevokeRolesEP, c.config.organizationID, userID))
+	if err != nil {
+		return err
+	}
+
+	_, err = c.doRequest(ctx,
+		http.MethodPost,
+		requestURL,
+		nil,
+		requestBody,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c *AtlassianClient) doRequest(
 	ctx context.Context,
 	method string,
@@ -189,8 +240,9 @@ func (c *AtlassianClient) doRequest(
 	reqOpts ...ReqOpt,
 ) (http.Header, error) {
 	var (
-		resp *http.Response
-		err  error
+		resp   *http.Response
+		apiErr APIError
+		err    error
 	)
 
 	urlAddress, err := url.Parse(endpointUrl)
@@ -202,7 +254,9 @@ func (c *AtlassianClient) doRequest(
 		o(urlAddress)
 	}
 
-	reqOptions := []uhttp.RequestOption{uhttp.WithBearerToken(c.config.accessToken)}
+	reqOptions := []uhttp.RequestOption{
+		uhttp.WithBearerToken(c.config.accessToken),
+	}
 	if body != nil {
 		reqOptions = append(reqOptions, uhttp.WithJSONBody(body))
 	}
@@ -219,7 +273,10 @@ func (c *AtlassianClient) doRequest(
 
 	switch method {
 	case http.MethodGet, http.MethodPut, http.MethodPost:
-		doOptions := []uhttp.DoOption{}
+		doOptions := []uhttp.DoOption{
+			uhttp.WithErrorResponse(&apiErr),
+		}
+
 		if res != nil {
 			doOptions = append(doOptions, uhttp.WithResponse(&res))
 		}

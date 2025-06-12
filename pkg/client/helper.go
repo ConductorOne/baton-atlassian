@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 )
@@ -31,4 +32,16 @@ func WithQueryParam(key string, value string) ReqOpt {
 		q.Set(key, value)
 		reqURL.RawQuery = q.Encode()
 	}
+}
+
+type RoleAssignmentBody struct {
+	Role     string `json:"role"`
+	Resource string `json:"resource"`
+}
+
+func (er *APIError) Message() string {
+	if len(er.Errors) > 0 {
+		return fmt.Sprintf("API error response detail: %s", er.Errors[0].Detail)
+	}
+	return "Error response empty"
 }

@@ -3,6 +3,7 @@ package connector
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/conductorone/baton-atlassian/pkg/client"
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
@@ -88,6 +89,49 @@ func (b *workspaceBuilder) Entitlements(_ context.Context, resource *v2.Resource
 // Grants are created on both Users and Groups resources, since the model is made with that approach, and it's easier and more efficient like this.
 func (b *workspaceBuilder) Grants(_ context.Context, _ *v2.Resource, _ *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
 	return nil, "", nil, nil
+}
+
+func (b *workspaceBuilder) Grant(ctx context.Context, principal *v2.Resource, entitlement *v2.Entitlement) (annotations.Annotations, error) {
+	userID := principal.Id.Resource
+	workspaceID, roleID, err := extractIDsFromEntitlements(entitlement.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	err = b.client.AssignRoleToUser(ctx, userID, workspaceID, roleID)
+	if err != nil {
+		return annotations.Annotations{}, err
+	}
+
+	return nil, nil
+}
+
+func (b *workspaceBuilder) Revoke(ctx context.Context, grant *v2.Grant) (annotations.Annotations, error) {
+	userID := grant.Principal.Id.Resource
+	workspaceID, roleID, err := extractIDsFromEntitlements(grant.Entitlement.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	err = b.client.RevokeRoleFromUser(ctx, userID, workspaceID, roleID)
+	if err != nil {
+		return annotations.Annotations{}, err
+	}
+
+	return nil, nil
+}
+
+func extractIDsFromEntitlements(entitlementID string) (string, string, error) {
+	entitlementIDSegments := strings.Split(entitlementID, ":")
+	amountOfSegments := len(entitlementIDSegments)
+	if amountOfSegments < 4 || entitlementIDSegments[0] != "workspace" || entitlementIDSegments[amountOfSegments-2] != "role" {
+		return "", "", fmt.Errorf("invalid entitlementID format: %s", entitlementID)
+	}
+
+	roleID := entitlementIDSegments[amountOfSegments-1]
+	workspaceID := strings.Join(entitlementIDSegments[1:amountOfSegments-2], ":")
+
+	return workspaceID, roleID, nil
 }
 
 func parseIntoWorkspaceResource(workspace client.Workspace) (*v2.Resource, error) {
