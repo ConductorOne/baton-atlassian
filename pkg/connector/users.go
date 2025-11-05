@@ -128,7 +128,7 @@ func parseIntoUserResource(user client.User) (*v2.Resource, error) {
 
 	if user.Status == "active" {
 		userStatus = v2.UserTrait_Status_STATUS_ENABLED
-	} else if user.Status == "deactivated" {
+	} else if user.Status == "suspended" {
 		userStatus = v2.UserTrait_Status_STATUS_DISABLED
 	}
 

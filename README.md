@@ -50,6 +50,33 @@ baton resources
 - Groups
 - Workspaces (product-sites)
 
+# Provisioning Actions
+
+`baton-atlassian` supports the following provisioning actions when using the `--provisioning` flag:
+
+## Enable User
+Restores a user's access to the Atlassian organization.
+
+```bash
+baton-atlassian --access-token ACCESS_TOKEN --organization-id ORG_ID \
+  --invoke-action=enable_user \
+  --invoke-action-args='{"user_id":"712020:ACCOUNT_ID"}'
+```
+
+## Disable User
+Suspends a user's access to the Atlassian organization.
+
+```bash
+baton-atlassian --access-token ACCESS_TOKEN --organization-id ORG_ID \
+  --invoke-action=disable_user \
+  --invoke-action-args='{"user_id":"712020:ACCOUNT_ID"}'
+```
+
+**Note:**
+- The `user_id` format is `{orgId}:{accountId}` (e.g., `712020:15e84729-4ba1-4b91-8aec-e2bb352955f0`)
+- Organization administrators cannot be suspended via the API
+- The API token must have admin permissions for the organization to perform these actions
+
 # Contributing, Support and Issues
 
 We started Baton because we were tired of taking screenshots and manually
