@@ -234,6 +234,7 @@ func (c *AtlassianClient) RevokeRoleFromUser(ctx context.Context, userID, worksp
 	return nil
 }
 
+// https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-suspend-access-post
 func (c *AtlassianClient) DisableUser(ctx context.Context, accountID string) error {
 	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(userSuspendAccessEP, c.config.organizationID, accountID))
 	if err != nil {
@@ -253,6 +254,7 @@ func (c *AtlassianClient) DisableUser(ctx context.Context, accountID string) err
 	return nil
 }
 
+// https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-restore-access-post
 func (c *AtlassianClient) EnableUser(ctx context.Context, accountID string) error {
 	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(userRestoreAccessEP, c.config.organizationID, accountID))
 	if err != nil {
