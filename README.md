@@ -50,10 +50,6 @@ baton resources
 - Groups
 - Workspaces (product-sites)
 
-# Provisioning Actions
-
-`baton-atlassian` supports the following provisioning actions when using the `--provisioning` flag:
-
 # Contributing, Support and Issues
 
 We started Baton because we were tired of taking screenshots and manually
