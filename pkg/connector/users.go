@@ -126,9 +126,10 @@ func parseIntoUserResource(user client.User) (*v2.Resource, error) {
 		"email_verified": user.EmailVerified,
 	}
 
-	if user.Status == "active" {
+	switch user.Status {
+	case "active":
 		userStatus = v2.UserTrait_Status_STATUS_ENABLED
-	} else if user.Status == "suspended" {
+	case "suspended":
 		userStatus = v2.UserTrait_Status_STATUS_DISABLED
 	}
 

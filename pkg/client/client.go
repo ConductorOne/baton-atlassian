@@ -21,7 +21,7 @@ const (
 
 	userAssignRolesEP = "v1/orgs/%s/users/%s/roles/assign"
 	userRevokeRolesEP = "v1/orgs/%s/users/%s/roles/revoke"
-	// Note: suspend/restore access endpoints cannot be used on organization administrators (returns 400 error)
+	// Note: suspend/restore access endpoints cannot be used on organization administrators (returns 400 error).
 	userSuspendAccessEP = "v1/orgs/%s/directory/users/%s/suspend-access"
 	userRestoreAccessEP = "v1/orgs/%s/directory/users/%s/restore-access"
 )
