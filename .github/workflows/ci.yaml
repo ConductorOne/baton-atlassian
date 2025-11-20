@@ -29,6 +29,8 @@ jobs:
         with:
           go-version-file: go.mod
       - name: go tests
+        env:
+          GOTOOLCHAIN: auto
         run: (set -o pipefail && go test -v -covermode=count -json ./... | tee test.json)
       - name: annotate go tests
         if: always()
