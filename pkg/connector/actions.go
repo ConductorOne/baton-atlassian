@@ -122,7 +122,6 @@ func (c *Connector) handleDisableUser(
 		return &structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"success": structpb.NewBoolValue(false),
-				"message": structpb.NewStringValue(fmt.Sprintf("Failed to disable user: %v", err)),
 			},
 		}, nil, err
 	}
@@ -132,8 +131,6 @@ func (c *Connector) handleDisableUser(
 	return &structpb.Struct{
 		Fields: map[string]*structpb.Value{
 			"success": structpb.NewBoolValue(true),
-			"message": structpb.NewStringValue(fmt.Sprintf("User %s disabled successfully", userID)),
-			"user_id": structpb.NewStringValue(userID),
 		},
 	}, nil, nil
 }
@@ -163,7 +160,6 @@ func (c *Connector) handleEnableUser(
 		return &structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"success": structpb.NewBoolValue(false),
-				"message": structpb.NewStringValue(fmt.Sprintf("Failed to enable user: %v", err)),
 			},
 		}, nil, err
 	}
@@ -173,8 +169,6 @@ func (c *Connector) handleEnableUser(
 	return &structpb.Struct{
 		Fields: map[string]*structpb.Value{
 			"success": structpb.NewBoolValue(true),
-			"message": structpb.NewStringValue(fmt.Sprintf("User %s enabled successfully", userID)),
-			"user_id": structpb.NewStringValue(userID),
 		},
 	}, nil, nil
 }
