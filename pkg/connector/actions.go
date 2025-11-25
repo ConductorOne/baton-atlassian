@@ -27,7 +27,7 @@ func (c *Connector) RegisterActionManager(ctx context.Context) (connectorbuilder
 			{
 				Name:        "user_id",
 				DisplayName: "User ID",
-				Description: "The Atlassian account ID to disable (format: orgId:accountId)",
+				Description: "The Atlassian account ID to disable",
 				IsRequired:  true,
 				Field: &config_sdk.Field_StringField{
 					StringField: &config_sdk.StringField{},
@@ -65,7 +65,7 @@ func (c *Connector) RegisterActionManager(ctx context.Context) (connectorbuilder
 			{
 				Name:        "user_id",
 				DisplayName: "User ID",
-				Description: "The Atlassian account ID to enable (format: orgId:accountId)",
+				Description: "The Atlassian account ID to enable",
 				IsRequired:  true,
 				Field: &config_sdk.Field_StringField{
 					StringField: &config_sdk.StringField{},
