@@ -29,8 +29,8 @@ jobs:
 
       - name: Run and save capabilities output
         env:
-          BATON_ACCESS_TOKEN: "example"
-          BATON_ORGANIZATION_ID: "example"
+          BATON_ACCESS_TOKEN: ${{ secrets.BATON_ACCESS_TOKEN }}
+          BATON_ORGANIZATION_ID: ${{ secrets.BATON_ORGANIZATION_ID }}
         run: ./connector capabilities > baton_capabilities.json
 
       - name: Commit changes
