@@ -2,8 +2,10 @@
   "fields": [
     {
       "name": "access-token",
+      "displayName": "Access Token",
       "description": "Access Token used to authenticate with the Atlassian API.",
       "isRequired": true,
+      "isSecret": true,
       "stringField": {
         "rules": {
           "isRequired": true
@@ -26,6 +28,7 @@
     },
     {
       "name": "organization-id",
+      "displayName": "Organization ID",
       "description": "Organization that will be synchronized.",
       "isRequired": true,
       "stringField": {
@@ -70,5 +73,8 @@
       "isOps": true,
       "boolField": {}
     }
-  ]
+  ],
+  "displayName": "Atlassian",
+  "helpUrl": "/docs/baton/atlassian",
+  "iconUrl": "/static/app-icons/atlassian.svg"
 }
