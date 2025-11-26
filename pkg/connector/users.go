@@ -129,7 +129,7 @@ func parseIntoUserResource(user client.User) (*v2.Resource, error) {
 	switch user.Status {
 	case "active":
 		userStatus = v2.UserTrait_Status_STATUS_ENABLED
-	case "deactivated":
+	case "suspended":
 		userStatus = v2.UserTrait_Status_STATUS_DISABLED
 	}
 
