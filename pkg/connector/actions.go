@@ -29,9 +29,7 @@ func (c *Connector) RegisterActionManager(ctx context.Context) (connectorbuilder
 				DisplayName: "User ID",
 				Description: "The Atlassian account ID to disable",
 				IsRequired:  true,
-				Field: &config_sdk.Field_StringField{
-					StringField: &config_sdk.StringField{},
-				},
+				Field:       &config_sdk.Field_StringField{},
 			},
 		},
 		ReturnTypes: []*config_sdk.Field{
@@ -42,7 +40,6 @@ func (c *Connector) RegisterActionManager(ctx context.Context) (connectorbuilder
 			},
 		},
 		ActionType: []v2.ActionType{
-			v2.ActionType_ACTION_TYPE_ACCOUNT,
 			v2.ActionType_ACTION_TYPE_ACCOUNT_DISABLE,
 		},
 	}
@@ -67,9 +64,7 @@ func (c *Connector) RegisterActionManager(ctx context.Context) (connectorbuilder
 				DisplayName: "User ID",
 				Description: "The Atlassian account ID to enable",
 				IsRequired:  true,
-				Field: &config_sdk.Field_StringField{
-					StringField: &config_sdk.StringField{},
-				},
+				Field:       &config_sdk.Field_StringField{},
 			},
 		},
 		ReturnTypes: []*config_sdk.Field{
@@ -80,7 +75,6 @@ func (c *Connector) RegisterActionManager(ctx context.Context) (connectorbuilder
 			},
 		},
 		ActionType: []v2.ActionType{
-			v2.ActionType_ACTION_TYPE_ACCOUNT,
 			v2.ActionType_ACTION_TYPE_ACCOUNT_ENABLE,
 		},
 	}
@@ -119,11 +113,7 @@ func (c *Connector) handleDisableUser(
 	err := c.client.DisableUser(ctx, userID)
 	if err != nil {
 		l.Error("failed to disable user", zap.String("user_id", userID), zap.Error(err))
-		return &structpb.Struct{
-			Fields: map[string]*structpb.Value{
-				"success": structpb.NewBoolValue(false),
-			},
-		}, nil, err
+		return nil, nil, fmt.Errorf("failed to disable user %s: %w", userID, err)
 	}
 
 	l.Info("user disabled successfully", zap.String("user_id", userID))
@@ -157,11 +147,7 @@ func (c *Connector) handleEnableUser(
 	err := c.client.EnableUser(ctx, userID)
 	if err != nil {
 		l.Error("failed to enable user", zap.String("user_id", userID), zap.Error(err))
-		return &structpb.Struct{
-			Fields: map[string]*structpb.Value{
-				"success": structpb.NewBoolValue(false),
-			},
-		}, nil, err
+		return nil, nil, fmt.Errorf("failed to enable user %s: %w", userID, err)
 	}
 
 	l.Info("user enabled successfully", zap.String("user_id", userID))
