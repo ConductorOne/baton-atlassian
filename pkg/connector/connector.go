@@ -37,6 +37,70 @@ func (d *Connector) Metadata(_ context.Context) (*v2.ConnectorMetadata, error) {
 	return &v2.ConnectorMetadata{
 		DisplayName: "Atlassian Core",
 		Description: "Connector to sync data from an Atlassian Organization",
+		AccountCreationSchema: &v2.ConnectorAccountCreationSchema{
+			FieldMap: map[string]*v2.ConnectorAccountCreationSchema_Field{
+				"userName": {
+					DisplayName: "Username",
+					Description: "The username for the new user (typically their email address)",
+					Required:    true,
+					Placeholder: "user@example.com",
+					Order:       1,
+					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+					},
+				},
+				"email": {
+					DisplayName: "Email",
+					Description: "The primary email address for the new user",
+					Required:    true,
+					Placeholder: "user@example.com",
+					Order:       2,
+					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+					},
+				},
+				"directoryId": {
+					DisplayName: "Directory ID",
+					Description: "The Atlassian directory ID where the user will be created",
+					Required:    true,
+					Placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+					Order:       3,
+					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+					},
+				},
+				"givenName": {
+					DisplayName: "First Name",
+					Description: "The user's first name (optional)",
+					Required:    false,
+					Placeholder: "John",
+					Order:       4,
+					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+					},
+				},
+				"familyName": {
+					DisplayName: "Last Name",
+					Description: "The user's last name (optional)",
+					Required:    false,
+					Placeholder: "Doe",
+					Order:       5,
+					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+					},
+				},
+				"displayName": {
+					DisplayName: "Display Name",
+					Description: "The user's display name (optional)",
+					Required:    false,
+					Placeholder: "John Doe",
+					Order:       6,
+					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+					},
+				},
+			},
+		},
 	}, nil
 }
 

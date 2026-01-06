@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	baseURL = "https://api.atlassian.com/admin"
+	baseURL     = "https://api.atlassian.com/admin"
+	scimBaseURL = "https://api.atlassian.com/scim"
 
 	usersEP                = "v2/orgs/%s/directories/-/users"
 	workspacesEP           = "v2/orgs/%s/workspaces"
@@ -24,6 +25,9 @@ const (
 	// Note: suspend/restore access endpoints cannot be used on organization administrators (returns 400 error).
 	userSuspendAccessEP = "v1/orgs/%s/directory/users/%s/suspend-access"
 	userRestoreAccessEP = "v1/orgs/%s/directory/users/%s/restore-access"
+
+	// https://developer.atlassian.com/cloud/admin/scim/rest/api-group-users/#api-scim-directory-directoryid-users-post
+	scimUsersEP = "directory/%s/Users"
 )
 
 type AtlassianClient struct {
@@ -272,6 +276,27 @@ func (c *AtlassianClient) EnableUser(ctx context.Context, accountID string) erro
 	}
 
 	return nil
+}
+
+// https://developer.atlassian.com/cloud/admin/scim/rest/api-group-users/#api-scim-directory-directoryid-users-post
+func (c *AtlassianClient) CreateUser(ctx context.Context, directoryID string, request SCIMCreateUserRequest) (*SCIMUserResponse, error) {
+	var scimResponse SCIMUserResponse
+	requestURL, err := url.JoinPath(scimBaseURL, fmt.Sprintf(scimUsersEP, directoryID))
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = c.doRequest(ctx,
+		http.MethodPost,
+		requestURL,
+		&scimResponse,
+		request,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &scimResponse, nil
 }
 
 func (c *AtlassianClient) doRequest(

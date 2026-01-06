@@ -7,9 +7,18 @@ import (
 	"github.com/conductorone/baton-atlassian/pkg/client"
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
+	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 	"github.com/conductorone/baton-sdk/pkg/types/grant"
 	"github.com/conductorone/baton-sdk/pkg/types/resource"
+	"github.com/conductorone/baton-sdk/pkg/uhttp"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+const (
+	statusActive    = "active"
+	statusSuspended = "suspended"
 )
 
 type userBuilder struct {
@@ -127,9 +136,9 @@ func parseIntoUserResource(user client.User) (*v2.Resource, error) {
 	}
 
 	switch user.Status {
-	case "active":
+	case statusActive:
 		userStatus = v2.UserTrait_Status_STATUS_ENABLED
-	case "suspended":
+	case statusSuspended:
 		userStatus = v2.UserTrait_Status_STATUS_DISABLED
 	}
 
@@ -146,6 +155,107 @@ func parseIntoUserResource(user client.User) (*v2.Resource, error) {
 		user.AccountId,
 		userTraits,
 	)
+}
+
+func (b *userBuilder) CreateAccountCapabilityDetails(ctx context.Context) (*v2.CredentialDetailsAccountProvisioning, annotations.Annotations, error) {
+	return &v2.CredentialDetailsAccountProvisioning{
+		SupportedCredentialOptions: []v2.CapabilityDetailCredentialOption{
+			v2.CapabilityDetailCredentialOption_CAPABILITY_DETAIL_CREDENTIAL_OPTION_NO_PASSWORD,
+		},
+		PreferredCredentialOption: v2.CapabilityDetailCredentialOption_CAPABILITY_DETAIL_CREDENTIAL_OPTION_NO_PASSWORD,
+	}, nil, nil
+}
+
+func (b *userBuilder) CreateAccount(ctx context.Context, accountInfo *v2.AccountInfo, credentialOptions *v2.LocalCredentialOptions) (
+	connectorbuilder.CreateAccountResponse,
+	[]*v2.PlaintextData,
+	annotations.Annotations,
+	error,
+) {
+	profileFields := accountInfo.Profile.GetFields()
+
+	userNameVal := profileFields["userName"]
+	if userNameVal == nil || userNameVal.GetStringValue() == "" {
+		return nil, nil, nil, status.Error(codes.InvalidArgument, "userName is required")
+	}
+	userName := userNameVal.GetStringValue()
+
+	emailVal := profileFields["email"]
+	if emailVal == nil || emailVal.GetStringValue() == "" {
+		return nil, nil, nil, status.Error(codes.InvalidArgument, "email is required")
+	}
+	email := emailVal.GetStringValue()
+
+	directoryIDVal := profileFields["directoryId"]
+	if directoryIDVal == nil || directoryIDVal.GetStringValue() == "" {
+		return nil, nil, nil, status.Error(codes.InvalidArgument, "directoryId is required")
+	}
+	directoryID := directoryIDVal.GetStringValue()
+
+	request := client.SCIMCreateUserRequest{
+		UserName: userName,
+		Emails: []client.SCIMEmail{
+			{
+				Value:   email,
+				Type:    "work", // work or personal
+				Primary: true,
+			},
+		},
+		Active: true,
+	}
+
+	if givenNameVal := profileFields["givenName"]; givenNameVal != nil && givenNameVal.GetStringValue() != "" {
+		request.Name.GivenName = givenNameVal.GetStringValue()
+	}
+	if familyNameVal := profileFields["familyName"]; familyNameVal != nil && familyNameVal.GetStringValue() != "" {
+		request.Name.FamilyName = familyNameVal.GetStringValue()
+	}
+	if displayNameVal := profileFields["displayName"]; displayNameVal != nil && displayNameVal.GetStringValue() != "" {
+		request.DisplayName = displayNameVal.GetStringValue()
+	}
+
+	scimResponse, err := b.client.CreateUser(ctx, directoryID, request)
+	if err != nil {
+		return nil, nil, nil, uhttp.WrapErrors(codes.Internal, "failed to create user", err)
+	}
+
+	user := scimUserToUser(scimResponse)
+
+	userResource, err := parseIntoUserResource(user)
+	if err != nil {
+		return nil, nil, nil, uhttp.WrapErrors(codes.Internal, "failed to parse user resource", err)
+	}
+
+	return &v2.CreateAccountResponse_SuccessResult{
+		Resource: userResource,
+	}, nil, nil, nil
+}
+
+func scimUserToUser(scimUser *client.SCIMUserResponse) client.User {
+	var email string
+	for _, e := range scimUser.Emails {
+		if e.Primary {
+			email = e.Value
+			break
+		}
+	}
+	if email == "" && len(scimUser.Emails) > 0 {
+		email = scimUser.Emails[0].Value
+	}
+
+	status := statusSuspended
+	if scimUser.Active {
+		status = statusActive
+	}
+
+	return client.User{
+		AccountId:     scimUser.ID,
+		Status:        status,
+		AccountStatus: status,
+		Name:          scimUser.DisplayName,
+		Email:         email,
+		EmailVerified: true,
+	}
 }
 
 func newUserBuilder(c *client.AtlassianClient) *userBuilder {
