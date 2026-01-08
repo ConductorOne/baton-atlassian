@@ -59,22 +59,12 @@ func (d *Connector) Metadata(_ context.Context) (*v2.ConnectorMetadata, error) {
 						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
 					},
 				},
-				"directoryId": {
-					DisplayName: "Directory ID",
-					Description: "The Atlassian directory ID where the user will be created",
-					Required:    true,
-					Placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-					Order:       3,
-					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
-						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
-					},
-				},
 				"givenName": {
 					DisplayName: "First Name",
 					Description: "The user's first name (optional)",
 					Required:    false,
 					Placeholder: "John",
-					Order:       4,
+					Order:       3,
 					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
 						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
 					},
@@ -84,7 +74,7 @@ func (d *Connector) Metadata(_ context.Context) (*v2.ConnectorMetadata, error) {
 					Description: "The user's last name (optional)",
 					Required:    false,
 					Placeholder: "Doe",
-					Order:       5,
+					Order:       4,
 					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
 						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
 					},
@@ -94,7 +84,7 @@ func (d *Connector) Metadata(_ context.Context) (*v2.ConnectorMetadata, error) {
 					Description: "The user's display name (optional)",
 					Required:    false,
 					Placeholder: "John Doe",
-					Order:       6,
+					Order:       5,
 					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
 						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
 					},
@@ -111,14 +101,23 @@ func (d *Connector) Validate(_ context.Context) (annotations.Annotations, error)
 }
 
 // New returns a new instance of the connector.
-func New(ctx context.Context, accessToken, organizationID string) (*Connector, error) {
+func New(ctx context.Context, accessToken, scimToken, organizationID, scimBaseUrl string) (*Connector, error) {
 	l := ctxzap.Extract(ctx)
 
-	atlassianClient, err := client.New(
-		ctx,
+	clientOpts := []client.Option{
 		client.WithAccessToken(accessToken),
 		client.WithOrganizationID(organizationID),
-	)
+	}
+
+	if scimToken != "" {
+		clientOpts = append(clientOpts, client.WithScimToken(scimToken))
+	}
+
+	if scimBaseUrl != "" {
+		clientOpts = append(clientOpts, client.WithScimBaseUrl(scimBaseUrl))
+	}
+
+	atlassianClient, err := client.New(ctx, clientOpts...)
 	if err != nil {
 		l.Error("error creating Atlassian client", zap.Error(err))
 		return nil, err

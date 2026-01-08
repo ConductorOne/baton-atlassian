@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/conductorone/baton-sdk/pkg/uhttp"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
@@ -25,9 +26,6 @@ const (
 	// Note: suspend/restore access endpoints cannot be used on organization administrators (returns 400 error).
 	userSuspendAccessEP = "v1/orgs/%s/directory/users/%s/suspend-access"
 	userRestoreAccessEP = "v1/orgs/%s/directory/users/%s/restore-access"
-
-	// https://developer.atlassian.com/cloud/admin/scim/rest/api-group-users/#api-scim-directory-directoryid-users-post
-	scimUsersEP = "directory/%s/Users"
 )
 
 type AtlassianClient struct {
@@ -37,7 +35,9 @@ type AtlassianClient struct {
 
 type Config struct {
 	accessToken    string
+	scimToken      string
 	organizationID string
+	scimBaseUrl    string
 }
 
 type Option func(*AtlassianClient)
@@ -45,6 +45,18 @@ type Option func(*AtlassianClient)
 func WithAccessToken(accessToken string) Option {
 	return func(c *AtlassianClient) {
 		c.config.accessToken = accessToken
+	}
+}
+
+func WithScimToken(scimToken string) Option {
+	return func(c *AtlassianClient) {
+		c.config.scimToken = scimToken
+	}
+}
+
+func WithScimBaseUrl(scimBaseUrl string) Option {
+	return func(c *AtlassianClient) {
+		c.config.scimBaseUrl = scimBaseUrl
 	}
 }
 
@@ -279,24 +291,35 @@ func (c *AtlassianClient) EnableUser(ctx context.Context, accountID string) erro
 }
 
 // https://developer.atlassian.com/cloud/admin/scim/rest/api-group-users/#api-scim-directory-directoryid-users-post
-func (c *AtlassianClient) CreateUser(ctx context.Context, directoryID string, request SCIMCreateUserRequest) (*SCIMUserResponse, error) {
+func (c *AtlassianClient) CreateUser(ctx context.Context, request SCIMCreateUserRequest) (*SCIMUserResponse, error) {
 	var scimResponse SCIMUserResponse
-	requestURL, err := url.JoinPath(scimBaseURL, fmt.Sprintf(scimUsersEP, directoryID))
-	if err != nil {
-		return nil, err
-	}
+	requestURL := fmt.Sprintf("%s/Users", strings.TrimSuffix(c.config.scimBaseUrl, "/"))
 
-	_, err = c.doRequest(ctx,
+	_, err := c.doRequestWithConfig(ctx,
 		http.MethodPost,
 		requestURL,
 		&scimResponse,
 		request,
+		nil,
+		WithToken(c.config.scimToken),
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	return &scimResponse, nil
+}
+
+type requestConfig struct {
+	token string
+}
+
+type RequestOpt func(*requestConfig)
+
+func WithToken(token string) RequestOpt {
+	return func(rc *requestConfig) {
+		rc.token = token
+	}
 }
 
 func (c *AtlassianClient) doRequest(
@@ -307,11 +330,31 @@ func (c *AtlassianClient) doRequest(
 	body interface{},
 	reqOpts ...ReqOpt,
 ) (http.Header, error) {
+	return c.doRequestWithConfig(ctx, method, endpointUrl, res, body, reqOpts)
+}
+
+func (c *AtlassianClient) doRequestWithConfig(
+	ctx context.Context,
+	method string,
+	endpointUrl string,
+	res interface{},
+	body interface{},
+	reqOpts []ReqOpt,
+	requestOpts ...RequestOpt,
+) (http.Header, error) {
 	var (
 		resp   *http.Response
 		apiErr APIError
 		err    error
 	)
+
+	reqConfig := &requestConfig{
+		token: c.config.accessToken,
+	}
+
+	for _, opt := range requestOpts {
+		opt(reqConfig)
+	}
 
 	urlAddress, err := url.Parse(endpointUrl)
 	if err != nil {
@@ -323,7 +366,7 @@ func (c *AtlassianClient) doRequest(
 	}
 
 	reqOptions := []uhttp.RequestOption{
-		uhttp.WithBearerToken(c.config.accessToken),
+		uhttp.WithBearerToken(reqConfig.token),
 	}
 	if body != nil {
 		reqOptions = append(reqOptions, uhttp.WithJSONBody(body))

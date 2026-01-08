@@ -56,7 +56,9 @@ func getConnector(ctx context.Context, cfg *config.Atlassian) (types.ConnectorSe
 	connectorBuilder, err := connectorSchema.New(
 		ctx,
 		cfg.AccessToken,
+		cfg.ScimToken,
 		cfg.OrganizationId,
+		cfg.ScimBaseUrl,
 	)
 
 	if err != nil {

@@ -186,12 +186,6 @@ func (b *userBuilder) CreateAccount(ctx context.Context, accountInfo *v2.Account
 	}
 	email := emailVal.GetStringValue()
 
-	directoryIDVal := profileFields["directoryId"]
-	if directoryIDVal == nil || directoryIDVal.GetStringValue() == "" {
-		return nil, nil, nil, status.Error(codes.InvalidArgument, "directoryId is required")
-	}
-	directoryID := directoryIDVal.GetStringValue()
-
 	request := client.SCIMCreateUserRequest{
 		UserName: userName,
 		Emails: []client.SCIMEmail{
@@ -214,7 +208,7 @@ func (b *userBuilder) CreateAccount(ctx context.Context, accountInfo *v2.Account
 		request.DisplayName = displayNameVal.GetStringValue()
 	}
 
-	scimResponse, err := b.client.CreateUser(ctx, directoryID, request)
+	scimResponse, err := b.client.CreateUser(ctx, request)
 	if err != nil {
 		return nil, nil, nil, uhttp.WrapErrors(codes.Internal, "failed to create user", err)
 	}

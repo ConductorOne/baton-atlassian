@@ -21,9 +21,26 @@ var (
 		field.WithDisplayName("Organization ID"),
 	)
 
+	ScimTokenField = field.StringField(
+		"scim-token",
+		field.WithDescription("SCIM Token used for user provisioning operations."),
+		field.WithRequired(false),
+		field.WithIsSecret(true),
+		field.WithDisplayName("SCIM Token"),
+	)
+
+	ScimBaseUrlField = field.StringField(
+		"scim-base-url",
+		field.WithDescription("The SCIM base URL for user provisioning (you can get it along with the token)"),
+		field.WithRequired(false),
+		field.WithDisplayName("SCIM Base URL"),
+	)
+
 	ConfigurationFields = []field.SchemaField{
 		AccessTokenField,
 		OrganizationIDField,
+		ScimTokenField,
+		ScimBaseUrlField,
 	}
 )
 
