@@ -290,8 +290,15 @@ func (c *AtlassianClient) EnableUser(ctx context.Context, accountID string) erro
 	return nil
 }
 
-// https://developer.atlassian.com/cloud/admin/scim/rest/api-group-users/#api-scim-directory-directoryid-users-post
+// https://developer.atlassian.com/cloud/admin/user-provisioning/rest/api-group-users/#api-scim-directory-directoryid-users-post
 func (c *AtlassianClient) CreateUser(ctx context.Context, request SCIMCreateUserRequest) (*SCIMUserResponse, error) {
+	if c.config.scimBaseUrl == "" {
+		return nil, fmt.Errorf("SCIM base URL is not configured")
+	}
+	if c.config.scimToken == "" {
+		return nil, fmt.Errorf("SCIM token is not configured")
+	}
+
 	var scimResponse SCIMUserResponse
 	requestURL := fmt.Sprintf("%s/Users", strings.TrimSuffix(c.config.scimBaseUrl, "/"))
 
