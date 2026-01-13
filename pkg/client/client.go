@@ -73,7 +73,7 @@ func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) ([]Us
 		return nil, "", err
 	}
 
-	reqOpts := []ReqOpt{WithPageSize(maxItemsPerPage)}
+	reqOpts := []RequestOpt{WithPageSize(maxItemsPerPage)}
 	if pageToken != "" {
 		reqOpts = append(reqOpts, WithPageToken(pageToken))
 	}
@@ -128,7 +128,7 @@ func (c *AtlassianClient) ListGroups(ctx context.Context, pageToken string) ([]G
 		return nil, "", err
 	}
 
-	reqOpts := []ReqOpt{WithPageSize(maxItemsPerPage)}
+	reqOpts := []RequestOpt{WithPageSize(maxItemsPerPage)}
 	if pageToken != "" {
 		reqOpts = append(reqOpts, WithPageToken(pageToken))
 	}
@@ -156,7 +156,7 @@ func (c *AtlassianClient) GetUserRoleAssignments(ctx context.Context, pageToken,
 		return nil, "", err
 	}
 
-	reqOpts := []ReqOpt{WithPageSize(maxItemsPerPage)}
+	reqOpts := []RequestOpt{WithPageSize(maxItemsPerPage)}
 	if pageToken != "" {
 		reqOpts = append(reqOpts, WithPageToken(pageToken))
 	}
@@ -183,7 +183,7 @@ func (c *AtlassianClient) GetGroupRoleAssignments(ctx context.Context, pageToken
 		return nil, "", err
 	}
 
-	reqOpts := []ReqOpt{WithPageSize(maxItemsPerPage)}
+	reqOpts := []RequestOpt{WithPageSize(maxItemsPerPage)}
 	if pageToken != "" {
 		reqOpts = append(reqOpts, WithPageToken(pageToken))
 	}
@@ -319,6 +319,7 @@ func (c *AtlassianClient) CreateUser(ctx context.Context, request SCIMCreateUser
 
 type requestConfig struct {
 	token string
+	url   *url.URL
 }
 
 type RequestOpt func(*requestConfig)
@@ -335,9 +336,9 @@ func (c *AtlassianClient) doRequest(
 	endpointUrl string,
 	res interface{},
 	body interface{},
-	reqOpts ...ReqOpt,
+	requestOpts ...RequestOpt,
 ) (http.Header, error) {
-	return c.doRequestWithConfig(ctx, method, endpointUrl, res, body, reqOpts)
+	return c.doRequestWithConfig(ctx, method, endpointUrl, res, body, requestOpts...)
 }
 
 func (c *AtlassianClient) doRequestWithConfig(
@@ -346,7 +347,6 @@ func (c *AtlassianClient) doRequestWithConfig(
 	endpointUrl string,
 	res interface{},
 	body interface{},
-	reqOpts []ReqOpt,
 	requestOpts ...RequestOpt,
 ) (http.Header, error) {
 	var (
@@ -355,21 +355,18 @@ func (c *AtlassianClient) doRequestWithConfig(
 		err    error
 	)
 
-	reqConfig := &requestConfig{
-		token: c.config.accessToken,
-	}
-
-	for _, opt := range requestOpts {
-		opt(reqConfig)
-	}
-
 	urlAddress, err := url.Parse(endpointUrl)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, o := range reqOpts {
-		o(urlAddress)
+	reqConfig := &requestConfig{
+		token: c.config.accessToken,
+		url:   urlAddress,
+	}
+
+	for _, opt := range requestOpts {
+		opt(reqConfig)
 	}
 
 	reqOptions := []uhttp.RequestOption{
@@ -382,7 +379,7 @@ func (c *AtlassianClient) doRequestWithConfig(
 	req, err := c.wrapper.NewRequest(
 		ctx,
 		method,
-		urlAddress,
+		reqConfig.url,
 		reqOptions...,
 	)
 	if err != nil {
