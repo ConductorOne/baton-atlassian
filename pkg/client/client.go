@@ -302,12 +302,11 @@ func (c *AtlassianClient) CreateUser(ctx context.Context, request SCIMCreateUser
 	var scimResponse SCIMUserResponse
 	requestURL := fmt.Sprintf("%s/Users", strings.TrimSuffix(c.config.scimBaseUrl, "/"))
 
-	_, err := c.doRequestWithConfig(ctx,
+	_, err := c.doRequest(ctx,
 		http.MethodPost,
 		requestURL,
 		&scimResponse,
 		request,
-		nil,
 		WithToken(c.config.scimToken),
 	)
 	if err != nil {
@@ -331,17 +330,6 @@ func WithToken(token string) RequestOpt {
 }
 
 func (c *AtlassianClient) doRequest(
-	ctx context.Context,
-	method string,
-	endpointUrl string,
-	res interface{},
-	body interface{},
-	requestOpts ...RequestOpt,
-) (http.Header, error) {
-	return c.doRequestWithConfig(ctx, method, endpointUrl, res, body, requestOpts...)
-}
-
-func (c *AtlassianClient) doRequestWithConfig(
 	ctx context.Context,
 	method string,
 	endpointUrl string,
