@@ -72,6 +72,23 @@
       "description": "Disable OpenTelemetry tracing",
       "isOps": true,
       "boolField": {}
+    },
+    {
+      "name": "scim-base-url",
+      "displayName": "SCIM Base URL",
+      "description": "The SCIM base URL for user provisioning (you can get it along with the token)",
+      "stringField": {
+        "rules": {}
+      }
+    },
+    {
+      "name": "scim-token",
+      "displayName": "SCIM Token",
+      "description": "SCIM Token used for user provisioning operations.",
+      "isSecret": true,
+      "stringField": {
+        "rules": {}
+      }
     }
   ],
   "displayName": "Atlassian",
