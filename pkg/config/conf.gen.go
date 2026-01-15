@@ -6,6 +6,8 @@ import "reflect"
 type Atlassian struct {
 	AccessToken string `mapstructure:"access-token"`
 	OrganizationId string `mapstructure:"organization-id"`
+	ScimToken string `mapstructure:"scim-token"`
+	ScimBaseUrl string `mapstructure:"scim-base-url"`
 }
 
 func (c *Atlassian) findFieldByTag(tagValue string) (any, bool) {

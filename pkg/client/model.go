@@ -124,3 +124,32 @@ type RoleAssignment struct {
 	ResourceOwner string   `json:"resourceOwner"`
 	Roles         []string `json:"roles"`
 }
+
+type SCIMEmail struct {
+	Value   string `json:"value"`
+	Type    string `json:"type"`
+	Primary bool   `json:"primary"`
+}
+
+type SCIMName struct {
+	GivenName  string `json:"givenName,omitempty"`
+	FamilyName string `json:"familyName,omitempty"`
+}
+
+type SCIMCreateUserRequest struct {
+	UserName    string      `json:"userName"`
+	Emails      []SCIMEmail `json:"emails"`
+	Name        SCIMName    `json:"name,omitempty"`
+	DisplayName string      `json:"displayName,omitempty"`
+	Active      bool        `json:"active"`
+}
+
+type SCIMUserResponse struct {
+	Schemas     []string    `json:"schemas"`
+	ID          string      `json:"id"`
+	UserName    string      `json:"userName"`
+	Emails      []SCIMEmail `json:"emails"`
+	Name        SCIMName    `json:"name"`
+	DisplayName string      `json:"displayName"`
+	Active      bool        `json:"active"`
+}

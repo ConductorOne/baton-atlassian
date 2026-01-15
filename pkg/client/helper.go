@@ -2,16 +2,13 @@ package client
 
 import (
 	"fmt"
-	"net/url"
 	"strconv"
 )
 
 // maxItemsPerPage that the API allows is 100. The default value is 20.
 const maxItemsPerPage = 100
 
-type ReqOpt func(reqURL *url.URL)
-
-func WithPageSize(pageSize int) ReqOpt {
+func WithPageSize(pageSize int) RequestOpt {
 	if pageSize < 0 {
 		pageSize = 0
 	}
@@ -22,15 +19,15 @@ func WithPageSize(pageSize int) ReqOpt {
 	return WithQueryParam("limit", strconv.Itoa(pageSize))
 }
 
-func WithPageToken(pageToken string) ReqOpt {
+func WithPageToken(pageToken string) RequestOpt {
 	return WithQueryParam("cursor", pageToken)
 }
 
-func WithQueryParam(key string, value string) ReqOpt {
-	return func(reqURL *url.URL) {
-		q := reqURL.Query()
+func WithQueryParam(key string, value string) RequestOpt {
+	return func(rc *requestConfig) {
+		q := rc.url.Query()
 		q.Set(key, value)
-		reqURL.RawQuery = q.Encode()
+		rc.url.RawQuery = q.Encode()
 	}
 }
 

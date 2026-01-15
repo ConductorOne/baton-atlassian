@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/conductorone/baton-sdk/pkg/uhttp"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 )
 
 const (
-	baseURL = "https://api.atlassian.com/admin"
+	baseURL     = "https://api.atlassian.com/admin"
+	scimBaseURL = "https://api.atlassian.com/scim"
 
 	usersEP                = "v2/orgs/%s/directories/-/users"
 	workspacesEP           = "v2/orgs/%s/workspaces"
@@ -33,7 +35,9 @@ type AtlassianClient struct {
 
 type Config struct {
 	accessToken    string
+	scimToken      string
 	organizationID string
+	scimBaseUrl    string
 }
 
 type Option func(*AtlassianClient)
@@ -41,6 +45,18 @@ type Option func(*AtlassianClient)
 func WithAccessToken(accessToken string) Option {
 	return func(c *AtlassianClient) {
 		c.config.accessToken = accessToken
+	}
+}
+
+func WithScimToken(scimToken string) Option {
+	return func(c *AtlassianClient) {
+		c.config.scimToken = scimToken
+	}
+}
+
+func WithScimBaseUrl(scimBaseUrl string) Option {
+	return func(c *AtlassianClient) {
+		c.config.scimBaseUrl = scimBaseUrl
 	}
 }
 
@@ -57,7 +73,7 @@ func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) ([]Us
 		return nil, "", err
 	}
 
-	reqOpts := []ReqOpt{WithPageSize(maxItemsPerPage)}
+	reqOpts := []RequestOpt{WithPageSize(maxItemsPerPage)}
 	if pageToken != "" {
 		reqOpts = append(reqOpts, WithPageToken(pageToken))
 	}
@@ -112,7 +128,7 @@ func (c *AtlassianClient) ListGroups(ctx context.Context, pageToken string) ([]G
 		return nil, "", err
 	}
 
-	reqOpts := []ReqOpt{WithPageSize(maxItemsPerPage)}
+	reqOpts := []RequestOpt{WithPageSize(maxItemsPerPage)}
 	if pageToken != "" {
 		reqOpts = append(reqOpts, WithPageToken(pageToken))
 	}
@@ -140,7 +156,7 @@ func (c *AtlassianClient) GetUserRoleAssignments(ctx context.Context, pageToken,
 		return nil, "", err
 	}
 
-	reqOpts := []ReqOpt{WithPageSize(maxItemsPerPage)}
+	reqOpts := []RequestOpt{WithPageSize(maxItemsPerPage)}
 	if pageToken != "" {
 		reqOpts = append(reqOpts, WithPageToken(pageToken))
 	}
@@ -167,7 +183,7 @@ func (c *AtlassianClient) GetGroupRoleAssignments(ctx context.Context, pageToken
 		return nil, "", err
 	}
 
-	reqOpts := []ReqOpt{WithPageSize(maxItemsPerPage)}
+	reqOpts := []RequestOpt{WithPageSize(maxItemsPerPage)}
 	if pageToken != "" {
 		reqOpts = append(reqOpts, WithPageToken(pageToken))
 	}
@@ -274,13 +290,52 @@ func (c *AtlassianClient) EnableUser(ctx context.Context, accountID string) erro
 	return nil
 }
 
+// https://developer.atlassian.com/cloud/admin/user-provisioning/rest/api-group-users/#api-scim-directory-directoryid-users-post
+func (c *AtlassianClient) CreateUser(ctx context.Context, request SCIMCreateUserRequest) (*SCIMUserResponse, error) {
+	if c.config.scimBaseUrl == "" {
+		return nil, fmt.Errorf("SCIM base URL is not configured")
+	}
+	if c.config.scimToken == "" {
+		return nil, fmt.Errorf("SCIM token is not configured")
+	}
+
+	var scimResponse SCIMUserResponse
+	requestURL := fmt.Sprintf("%s/Users", strings.TrimSuffix(c.config.scimBaseUrl, "/"))
+
+	_, err := c.doRequest(ctx,
+		http.MethodPost,
+		requestURL,
+		&scimResponse,
+		request,
+		WithToken(c.config.scimToken),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &scimResponse, nil
+}
+
+type requestConfig struct {
+	token string
+	url   *url.URL
+}
+
+type RequestOpt func(*requestConfig)
+
+func WithToken(token string) RequestOpt {
+	return func(rc *requestConfig) {
+		rc.token = token
+	}
+}
+
 func (c *AtlassianClient) doRequest(
 	ctx context.Context,
 	method string,
 	endpointUrl string,
 	res interface{},
 	body interface{},
-	reqOpts ...ReqOpt,
+	requestOpts ...RequestOpt,
 ) (http.Header, error) {
 	var (
 		resp   *http.Response
@@ -293,12 +348,17 @@ func (c *AtlassianClient) doRequest(
 		return nil, err
 	}
 
-	for _, o := range reqOpts {
-		o(urlAddress)
+	reqConfig := &requestConfig{
+		token: c.config.accessToken,
+		url:   urlAddress,
+	}
+
+	for _, opt := range requestOpts {
+		opt(reqConfig)
 	}
 
 	reqOptions := []uhttp.RequestOption{
-		uhttp.WithBearerToken(c.config.accessToken),
+		uhttp.WithBearerToken(reqConfig.token),
 	}
 	if body != nil {
 		reqOptions = append(reqOptions, uhttp.WithJSONBody(body))
@@ -307,7 +367,7 @@ func (c *AtlassianClient) doRequest(
 	req, err := c.wrapper.NewRequest(
 		ctx,
 		method,
-		urlAddress,
+		reqConfig.url,
 		reqOptions...,
 	)
 	if err != nil {
