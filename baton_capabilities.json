@@ -11,7 +11,8 @@
       },
       "capabilities": [
         "CAPABILITY_SYNC"
-      ]
+      ],
+      "permissions": {}
     },
     {
       "resourceType": {
@@ -24,7 +25,8 @@
       "capabilities": [
         "CAPABILITY_SYNC",
         "CAPABILITY_ACCOUNT_PROVISIONING"
-      ]
+      ],
+      "permissions": {}
     },
     {
       "resourceType": {
@@ -34,7 +36,8 @@
       "capabilities": [
         "CAPABILITY_SYNC",
         "CAPABILITY_PROVISION"
-      ]
+      ],
+      "permissions": {}
     }
   ],
   "connectorCapabilities": [
