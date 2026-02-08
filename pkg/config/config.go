@@ -36,11 +36,20 @@ var (
 		field.WithDisplayName("SCIM Base URL"),
 	)
 
+	BaseURLField = field.StringField(
+		"base-url",
+		field.WithDisplayName("Base URL"),
+		field.WithDescription("Override the Atlassian Admin API URL (for testing)"),
+		field.WithHidden(true),
+		field.WithExportTarget(field.ExportTargetCLIOnly),
+	)
+
 	ConfigurationFields = []field.SchemaField{
 		AccessTokenField,
 		OrganizationIDField,
 		ScimTokenField,
 		ScimBaseUrlField,
+		BaseURLField,
 	}
 )
 

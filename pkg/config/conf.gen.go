@@ -8,6 +8,7 @@ type Atlassian struct {
 	OrganizationId string `mapstructure:"organization-id"`
 	ScimToken string `mapstructure:"scim-token"`
 	ScimBaseUrl string `mapstructure:"scim-base-url"`
+	BaseUrl string `mapstructure:"base-url"`
 }
 
 func (c *Atlassian) findFieldByTag(tagValue string) (any, bool) {

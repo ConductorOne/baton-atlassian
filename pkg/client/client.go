@@ -39,6 +39,7 @@ type Config struct {
 	scimToken      string
 	organizationID string
 	scimBaseUrl    string
+	baseURL        string
 }
 
 type Option func(*AtlassianClient)
@@ -67,6 +68,19 @@ func WithOrganizationID(orgID string) Option {
 	}
 }
 
+func WithBaseURL(baseURL string) Option {
+	return func(c *AtlassianClient) {
+		c.config.baseURL = baseURL
+	}
+}
+
+func (c *AtlassianClient) getBaseURL() string {
+	if c.config.baseURL != "" {
+		return c.config.baseURL
+	}
+	return baseURL
+}
+
 // GetOrganizationID returns the organization ID from the client configuration.
 func (c *AtlassianClient) GetOrganizationID() string {
 	return c.config.organizationID
@@ -75,7 +89,7 @@ func (c *AtlassianClient) GetOrganizationID() string {
 // GetOrganization returns the organization details including its name.
 func (c *AtlassianClient) GetOrganization(ctx context.Context) (*Organization, error) {
 	var orgResponse OrganizationResponse
-	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(organizationEP, c.config.organizationID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(organizationEP, c.config.organizationID))
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +110,7 @@ func (c *AtlassianClient) GetOrganization(ctx context.Context) (*Organization, e
 // GetGroupMembers returns a list of users that are members of a specific group.
 func (c *AtlassianClient) GetGroupMembers(ctx context.Context, pageToken, groupID string) ([]User, string, error) {
 	var usersResponse UserResponse
-	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(usersEP, c.config.organizationID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(usersEP, c.config.organizationID))
 	if err != nil {
 		return nil, "", err
 	}
@@ -126,7 +140,7 @@ func (c *AtlassianClient) GetGroupMembers(ctx context.Context, pageToken, groupI
 
 func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) ([]User, string, error) {
 	var usersResponse UserResponse
-	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(usersEP, c.config.organizationID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(usersEP, c.config.organizationID))
 	if err != nil {
 		return nil, "", err
 	}
@@ -153,7 +167,7 @@ func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) ([]Us
 
 func (c *AtlassianClient) ListWorkspaces(ctx context.Context, pageToken string) ([]Workspace, string, error) {
 	var workspacesResponse WorkspaceResponse
-	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(workspacesEP, c.config.organizationID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(workspacesEP, c.config.organizationID))
 	if err != nil {
 		return nil, "", err
 	}
@@ -181,7 +195,7 @@ func (c *AtlassianClient) ListWorkspaces(ctx context.Context, pageToken string) 
 
 func (c *AtlassianClient) ListGroups(ctx context.Context, pageToken string) ([]Group, string, error) {
 	var groupsResponse GroupResponse
-	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(groupsEP, c.config.organizationID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupsEP, c.config.organizationID))
 	if err != nil {
 		return nil, "", err
 	}
@@ -209,7 +223,7 @@ func (c *AtlassianClient) ListGroups(ctx context.Context, pageToken string) ([]G
 func (c *AtlassianClient) GetUserRoleAssignments(ctx context.Context, pageToken, userID string) ([]RoleAssignment, string, error) {
 	var roleAssignmentsResponse RoleAssignmentsResponse
 
-	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(usersRoleAssignmentEP, c.config.organizationID, userID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(usersRoleAssignmentEP, c.config.organizationID, userID))
 	if err != nil {
 		return nil, "", err
 	}
@@ -236,7 +250,7 @@ func (c *AtlassianClient) GetUserRoleAssignments(ctx context.Context, pageToken,
 func (c *AtlassianClient) GetGroupRoleAssignments(ctx context.Context, pageToken, groupID string) ([]RoleAssignment, string, error) {
 	var roleAssignmentsResponse RoleAssignmentsResponse
 
-	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(groupsRoleAssignmentEP, c.config.organizationID, groupID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupsRoleAssignmentEP, c.config.organizationID, groupID))
 	if err != nil {
 		return nil, "", err
 	}
@@ -266,7 +280,7 @@ func (c *AtlassianClient) AssignRoleToUser(ctx context.Context, userID, workspac
 		Resource: workspaceID,
 	}
 
-	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(userAssignRolesEP, c.config.organizationID, userID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(userAssignRolesEP, c.config.organizationID, userID))
 	if err != nil {
 		return err
 	}
@@ -290,7 +304,7 @@ func (c *AtlassianClient) RevokeRoleFromUser(ctx context.Context, userID, worksp
 		Resource: workspaceID,
 	}
 
-	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(userRevokeRolesEP, c.config.organizationID, userID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(userRevokeRolesEP, c.config.organizationID, userID))
 	if err != nil {
 		return err
 	}
@@ -310,7 +324,7 @@ func (c *AtlassianClient) RevokeRoleFromUser(ctx context.Context, userID, worksp
 
 // https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-suspend-access-post
 func (c *AtlassianClient) DisableUser(ctx context.Context, accountID string) error {
-	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(userSuspendAccessEP, c.config.organizationID, accountID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(userSuspendAccessEP, c.config.organizationID, accountID))
 	if err != nil {
 		return err
 	}
@@ -330,7 +344,7 @@ func (c *AtlassianClient) DisableUser(ctx context.Context, accountID string) err
 
 // https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-restore-access-post
 func (c *AtlassianClient) EnableUser(ctx context.Context, accountID string) error {
-	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(userRestoreAccessEP, c.config.organizationID, accountID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(userRestoreAccessEP, c.config.organizationID, accountID))
 	if err != nil {
 		return err
 	}
