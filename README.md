@@ -1,16 +1,16 @@
 ![Baton Logo](./baton-logo.png)
 
-# `baton-atlassian` [![Go Reference](https://pkg.go.dev/badge/github.com/conductorone/baton-atlassian.svg)](https://pkg.go.dev/github.com/conductorone/baton-atlassian) ![main ci](https://github.com/conductorone/baton-atlassian/actions/workflows/main.yaml/badge.svg)
+# `baton-atlassian` [![Go Reference](https://pkg.go.dev/badge/github.com/conductorone/baton-atlassian.svg)](https://pkg.go.dev/github.com/conductorone/baton-atlassian) ![verify](https://github.com/conductorone/baton-atlassian/actions/workflows/verify.yaml/badge.svg)
 
 `baton-atlassian` is a connector for [Atlassian](https://www.atlassian.com) built using the [Baton SDK](https://github.com/conductorone/baton-sdk).
-This connector is intended to use for managing general aspects of an Atlassian Organization, not specifically limited to any product or site. 
-People will be able to provision Roles for the users on different Workspaces (product-site) if they have the Atlassian feature enabled for their organization. 
+This connector is intended to use for managing general aspects of an Atlassian Organization, not specifically limited to any product or site.
+People will be able to provision Roles for the users on different Workspaces (product-site) if they have the Atlassian feature enabled for their organization.
 
 Check out [Baton](https://github.com/conductorone/baton) to learn more the project in general.
 
 # Prerequisites
 
-1. Follow [Atlassian Support Guide](https://support.atlassian.com/organization-administration/docs/manage-an-organization-with-the-admin-apis/) to create an admin API token for the organization 
+1. Follow [Atlassian Support Guide](https://support.atlassian.com/organization-administration/docs/manage-an-organization-with-the-admin-apis/) to create an admin API token for the organization
 2. Use Atlassian Admin to get the ID of the organization you want to sync:
     - URL should look like:
         `https://admin.atlassian.com/o/{organizationId}/`
