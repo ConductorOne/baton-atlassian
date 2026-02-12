@@ -67,9 +67,10 @@ func (b *userBuilder) Entitlements(_ context.Context, _ *v2.Resource, _ *paginat
 	return nil, "", nil, nil
 }
 
-// Grants function will be creating the grants for the Workspaces.
+// Grants function will be creating the grants for the Workspaces and Organization.
 //
-// Users have Roles assigned that gives them permissions on each Workspace (product sites).
+// Users have Roles assigned that gives them permissions on each Workspace (product sites)
+// and on the Organization level (org-admin, site-admin).
 func (b *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
 	var grantResources []*v2.Grant
 
@@ -85,18 +86,36 @@ func (b *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 	}
 
 	for _, roleAssignment := range roleAssignments {
-		// We only want to sync the role assignments for the Atlassian Products.
+		// We only want to sync the role assignments for the Atlassian Products and Platform.
 		// The ignored scopes refers to:
 		//     - project: This is a specific context within Jira. Roles with 'project' as the resource owner are typically project roles defined
 		// within a particular Jira project (e.g., "Administrators", "Developers", "Users" within a single Jira project).
 		//     - goal: This likely refers to roles related to Atlas Goals. If the organization uses Atlas for setting and tracking goals,
 		// roles assigned within that product might have 'goal' as the resource owner.
-		//     - platform: This generally refers to roles related to the core Atlassian platform itself. This could include roles related
-		// to user accounts, organization settings not tied to a specific product, or platform-wide permissions.
-		if roleAssignment.ResourceOwner == resourceOwnerProject || roleAssignment.ResourceOwner == resourceOwnerGoal || roleAssignment.ResourceOwner == resourceOwnerPlatform {
+		if roleAssignment.ResourceOwner == resourceOwnerProject || roleAssignment.ResourceOwner == resourceOwnerGoal {
 			continue
 		}
 
+		// Handle platform roles (org-admin, site-admin) - assign to Organization resource
+		if roleAssignment.ResourceOwner == resourceOwnerPlatform {
+			organizationResource := &v2.Resource{
+				Id: &v2.ResourceId{
+					ResourceType: organizationResourceType.Id,
+					Resource:     b.client.GetOrganizationID(),
+				},
+			}
+
+			for _, role := range roleAssignment.Roles {
+				entitlementID := fmt.Sprintf("role:%s", role)
+				grantResources = append(
+					grantResources,
+					grant.NewGrant(organizationResource, entitlementID, resource),
+				)
+			}
+			continue
+		}
+
+		// Handle workspace roles
 		workspaceResource := &v2.Resource{
 			Id: &v2.ResourceId{
 				ResourceType: workspaceResourceType.Id,

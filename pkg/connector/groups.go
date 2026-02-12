@@ -8,8 +8,15 @@ import (
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
+	"github.com/conductorone/baton-sdk/pkg/types/entitlement"
 	"github.com/conductorone/baton-sdk/pkg/types/grant"
 	"github.com/conductorone/baton-sdk/pkg/types/resource"
+)
+
+// Pagination phases for group grants.
+const (
+	groupGrantsPhaseMembers         = "members"
+	groupGrantsPhaseRoleAssignments = "role-assignments"
 )
 
 type groupBuilder struct {
@@ -24,7 +31,7 @@ func (b *groupBuilder) ResourceType(_ context.Context) *v2.ResourceType {
 func (b *groupBuilder) List(ctx context.Context, _ *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, annotations.Annotations, error) {
 	var groupResources []*v2.Resource
 
-	bag, pageToken, err := getToken(pToken, userResourceType)
+	bag, pageToken, err := getToken(pToken, groupResourceType)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -54,41 +61,111 @@ func (b *groupBuilder) List(ctx context.Context, _ *v2.ResourceId, pToken *pagin
 	return groupResources, nextPageToken, nil, nil
 }
 
-func (b *groupBuilder) Entitlements(_ context.Context, _ *v2.Resource, _ *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
-	return nil, "", nil, nil
+func (b *groupBuilder) Entitlements(_ context.Context, resource *v2.Resource, _ *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
+	var groupEntitlements []*v2.Entitlement
+
+	memberEntitlement := entitlement.NewAssignmentEntitlement(
+		resource,
+		"member",
+		entitlement.WithGrantableTo(userResourceType),
+		entitlement.WithDisplayName(fmt.Sprintf("%s member", resource.DisplayName)),
+		entitlement.WithDescription(fmt.Sprintf("Member of the %s group", resource.DisplayName)),
+	)
+	groupEntitlements = append(groupEntitlements, memberEntitlement)
+
+	return groupEntitlements, "", nil, nil
 }
 
-// Grants function will be creating the grants for the Workspaces.
+// Grants function will be creating the grants for the Workspaces, Organization, and group memberships.
 //
-// Groups have Roles assigned that gives them permissions on each Workspace (product sites).
-// We don't create group-memberships to users since this API doesn't retrieve that data. However, knowing the grants per Group is what we want.
+// Groups have Roles assigned that gives them permissions on each Workspace (product sites)
+// and on the Organization level (org-admin, site-admin).
+// Additionally, we sync group memberships (users that belong to each group).
+//
+// Pagination is handled in two phases:
+// 1. Members phase: paginate through all group members.
+// 2. Role assignments phase: paginate through all role assignments.
 func (b *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
 	var grantResources []*v2.Grant
 
-	bag, pageToken, err := getToken(pToken, userResourceType)
+	bag := &pagination.Bag{}
+	err := bag.Unmarshal(pToken.Token)
 	if err != nil {
 		return nil, "", nil, err
 	}
 
 	groupID := resource.Id.Resource
-	roleAssignments, nextPageToken, err := b.client.GetGroupRoleAssignments(ctx, pageToken, groupID)
+
+	if bag.Current() == nil {
+		bag.Push(pagination.PageState{
+			ResourceTypeID: groupGrantsPhaseMembers,
+		})
+	}
+
+	currentPhase := bag.Current().ResourceTypeID
+	pageToken := bag.PageToken()
+
+	// Phase 1: Get group members and create membership grants
+	if currentPhase == groupGrantsPhaseMembers {
+		members, membersNextPageToken, err := b.client.GetGroupMembers(ctx, pageToken, groupID)
+		if err != nil {
+			return nil, "", nil, err
+		}
+
+		for _, member := range members {
+			userResource := &v2.Resource{
+				Id: &v2.ResourceId{
+					ResourceType: userResourceType.Id,
+					Resource:     member.AccountId,
+				},
+			}
+			grantResources = append(
+				grantResources,
+				grant.NewGrant(resource, "member", userResource),
+			)
+		}
+
+		// If there are more members to paginate, continue with members phase
+		if membersNextPageToken != "" {
+			err = bag.Next(membersNextPageToken)
+			if err != nil {
+				return nil, "", nil, err
+			}
+			nextPageToken, err := bag.Marshal()
+			if err != nil {
+				return nil, "", nil, err
+			}
+			return grantResources, nextPageToken, nil, nil
+		}
+
+		// Members phase complete, transition to role assignments phase
+		bag.Pop()
+		bag.Push(pagination.PageState{
+			ResourceTypeID: groupGrantsPhaseRoleAssignments,
+		})
+		pageToken = "" // Reset page token for new phase.
+	}
+
+	roleAssignments, roleAssignmentsNextPageToken, err := b.client.GetGroupRoleAssignments(ctx, pageToken, groupID)
 	if err != nil {
 		return nil, "", nil, err
 	}
 
 	for _, roleAssignment := range roleAssignments {
-		// We only want to sync the role assignments for the Atlassian Products.
+		// We only want to sync the role assignments for the Atlassian Products (Workspaces).
 		// The ignored scopes refers to:
+		//     - platform: Organization-level roles (org-admin, site-admin) are already synced directly from user role-assignments.
 		//     - project: This is a specific context within Jira. Roles with 'project' as the resource owner are typically project roles defined
 		// within a particular Jira project (e.g., "Administrators", "Developers", "Users" within a single Jira project).
 		//     - goal: This likely refers to roles related to Atlas Goals. If the organization uses Atlas for setting and tracking goals,
 		// roles assigned within that product might have 'goal' as the resource owner.
-		//     - platform: This generally refers to roles related to the core Atlassian platform itself. This could include roles related
-		// to user accounts, organization settings not tied to a specific product, or platform-wide permissions.
-		if roleAssignment.ResourceOwner == resourceOwnerProject || roleAssignment.ResourceOwner == resourceOwnerGoal || roleAssignment.ResourceOwner == resourceOwnerPlatform {
+		if roleAssignment.ResourceOwner == resourceOwnerPlatform ||
+			roleAssignment.ResourceOwner == resourceOwnerProject ||
+			roleAssignment.ResourceOwner == resourceOwnerGoal {
 			continue
 		}
 
+		// Handle workspace roles
 		workspaceResource := &v2.Resource{
 			Id: &v2.ResourceId{
 				ResourceType: workspaceResourceType.Id,
@@ -105,16 +182,20 @@ func (b *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken
 		}
 	}
 
-	err = bag.Next(nextPageToken)
-	if err != nil {
-		return nil, "", nil, err
-	}
-	nextPageToken, err = bag.Marshal()
-	if err != nil {
-		return nil, "", nil, err
+	// If there are more role assignments to paginate, continue
+	if roleAssignmentsNextPageToken != "" {
+		err = bag.Next(roleAssignmentsNextPageToken)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		nextPageToken, err := bag.Marshal()
+		if err != nil {
+			return nil, "", nil, err
+		}
+		return grantResources, nextPageToken, nil, nil
 	}
 
-	return grantResources, nextPageToken, nil, nil
+	return grantResources, "", nil, nil
 }
 
 func parseIntoGroupResource(group client.Group) (*v2.Resource, error) {

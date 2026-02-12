@@ -153,3 +153,18 @@ type SCIMUserResponse struct {
 	DisplayName string      `json:"displayName"`
 	Active      bool        `json:"active"`
 }
+
+type OrganizationResponse struct {
+	Data Organization `json:"data"`
+}
+
+type Organization struct {
+	ID         string `json:"id"`
+	Type       string `json:"type"`
+	Attributes struct {
+		Name string `json:"name"`
+	} `json:"attributes"`
+	Links struct {
+		Self string `json:"self"`
+	} `json:"links"`
+}

@@ -23,6 +23,7 @@ func (d *Connector) ResourceSyncers(_ context.Context) []connectorbuilder.Resour
 		newUserBuilder(d.client),
 		newWorkspaceBuilder(d.client),
 		newGroupBuilder(d.client),
+		newOrganizationBuilder(d.client),
 	}
 }
 
