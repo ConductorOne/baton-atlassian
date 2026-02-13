@@ -10,10 +10,20 @@ Check out [Baton](https://github.com/conductorone/baton) to learn more the proje
 
 # Prerequisites
 
-1. Follow [Atlassian Support Guide](https://support.atlassian.com/organization-administration/docs/manage-an-organization-with-the-admin-apis/) to create an admin API token for the organization
-2. Use Atlassian Admin to get the ID of the organization you want to sync:
-    - URL should look like:
-        `https://admin.atlassian.com/o/{organizationId}/`
+
+## 1. Create an API Key
+
+1. Log into your Atlassian account (requires **Org admin** role)
+2. Navigate to **Organization Settings > API keys**
+3. Click **Create API key**
+4. **Select "API key without scopes"** and set a name and expiration date
+
+> **Important:** You must use "API key without scopes" because most endpoints used by this connector (users, groups, role-assignments) do not have scopes available yet. See [Atlassian Admin API documentation](https://support.atlassian.com/organization-administration/docs/manage-an-organization-with-the-admin-apis/) and [Organizations REST API Reference](https://developer.atlassian.com/cloud/admin/organization/rest/intro/).
+
+## 2. Get the Organization ID
+
+The Organization ID can be found in the URL when logged into Atlassian Admin:
+- `https://admin.atlassian.com/o/{organizationId}/`
 
 # Getting Started
 
@@ -46,9 +56,42 @@ baton resources
 # Data Model
 
 `baton-atlassian` will pull down information about the following resources:
-- Users
-- Groups
-- Workspaces (product-sites)
+
+| Resource Type | Description |
+|---------------|-------------|
+| **Organization** | The Atlassian organization with org-level roles (org-admin, site-admin, user-access-admin) |
+| **Users** | All users in the organization directory |
+| **Groups** | All groups in the organization with their memberships (e.g., org-admins, jira-admins, jira-users) |
+| **Workspaces** | Product-sites (Jira, Jira Software, Confluence, Rovo, etc.) |
+
+## Roles and Grants
+
+The connector syncs the following role assignments:
+
+### Organization-level Roles (Platform Roles)
+
+These roles are synced **directly from users only**.
+
+| Role | Description |
+|------|-------------|
+| `atlassian/org-admin` | Organization administrator with full access |
+| `atlassian/site-admin` | Site administrator |
+| `atlassian/user-access-admin` | User access administrator |
+| `atlassian/ai-access` | Atlassian Intelligence access (Premium/Enterprise only) |
+
+### Workspace-level Roles
+
+These roles can be assigned to **users and groups**.
+
+| Role | Description |
+|------|-------------|
+| `atlassian/user` | Basic user access to the workspace |
+| `atlassian/admin` | Administrator access to the workspace |
+| `atlassian/guest` | Guest access |
+| `atlassian/contributor` | Contributor access |
+| `atlassian/customer` | Customer access |
+| `atlassian/basic` | Basic access |
+| `atlassian/stakeholder` | Stakeholder access |
 
 # Contributing, Support and Issues
 

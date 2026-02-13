@@ -12,8 +12,7 @@ import (
 )
 
 const (
-	baseURL     = "https://api.atlassian.com/admin"
-	scimBaseURL = "https://api.atlassian.com/scim"
+	baseURL = "https://api.atlassian.com/admin"
 
 	usersEP                = "v2/orgs/%s/directories/-/users"
 	workspacesEP           = "v2/orgs/%s/workspaces"
@@ -26,6 +25,8 @@ const (
 	// Note: suspend/restore access endpoints cannot be used on organization administrators (returns 400 error).
 	userSuspendAccessEP = "v1/orgs/%s/directory/users/%s/suspend-access"
 	userRestoreAccessEP = "v1/orgs/%s/directory/users/%s/restore-access"
+
+	organizationEP = "v1/orgs/%s"
 )
 
 type AtlassianClient struct {
@@ -64,6 +65,63 @@ func WithOrganizationID(orgID string) Option {
 	return func(c *AtlassianClient) {
 		c.config.organizationID = orgID
 	}
+}
+
+// GetOrganizationID returns the organization ID from the client configuration.
+func (c *AtlassianClient) GetOrganizationID() string {
+	return c.config.organizationID
+}
+
+// GetOrganization returns the organization details including its name.
+func (c *AtlassianClient) GetOrganization(ctx context.Context) (*Organization, error) {
+	var orgResponse OrganizationResponse
+	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(organizationEP, c.config.organizationID))
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = c.doRequest(ctx,
+		http.MethodGet,
+		requestURL,
+		&orgResponse,
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &orgResponse.Data, nil
+}
+
+// GetGroupMembers returns a list of users that are members of a specific group.
+func (c *AtlassianClient) GetGroupMembers(ctx context.Context, pageToken, groupID string) ([]User, string, error) {
+	var usersResponse UserResponse
+	requestURL, err := url.JoinPath(baseURL, fmt.Sprintf(usersEP, c.config.organizationID))
+	if err != nil {
+		return nil, "", err
+	}
+
+	reqOpts := []RequestOpt{
+		WithPageSize(maxItemsPerPage),
+		WithQueryParam("groupIds", groupID),
+	}
+	if pageToken != "" {
+		reqOpts = append(reqOpts, WithPageToken(pageToken))
+	}
+	_, err = c.doRequest(ctx,
+		http.MethodGet,
+		requestURL,
+		&usersResponse,
+		nil,
+		reqOpts...,
+	)
+	if err != nil {
+		return nil, "", err
+	}
+
+	nextPageToken := usersResponse.Links.Next
+
+	return usersResponse.Data, nextPageToken, nil
 }
 
 func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) ([]User, string, error) {
