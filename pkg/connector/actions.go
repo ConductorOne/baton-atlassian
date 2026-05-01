@@ -13,6 +13,10 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
+const (
+	successKey = "success"
+)
+
 // GlobalActions implements the GlobalActionProvider interface.
 // It registers global actions for the connector.
 func (c *Connector) GlobalActions(ctx context.Context, registry actions.ActionRegistry) error {
@@ -33,7 +37,7 @@ func (c *Connector) GlobalActions(ctx context.Context, registry actions.ActionRe
 		},
 		ReturnTypes: []*config_sdk.Field{
 			{
-				Name:        "success",
+				Name:        successKey,
 				DisplayName: "Success",
 				Field:       &config_sdk.Field_BoolField{},
 			},
@@ -68,7 +72,7 @@ func (c *Connector) GlobalActions(ctx context.Context, registry actions.ActionRe
 		},
 		ReturnTypes: []*config_sdk.Field{
 			{
-				Name:        "success",
+				Name:        successKey,
 				DisplayName: "Success",
 				Field:       &config_sdk.Field_BoolField{},
 			},
@@ -119,7 +123,7 @@ func (c *Connector) handleDisableUser(
 
 	return &structpb.Struct{
 		Fields: map[string]*structpb.Value{
-			"success": structpb.NewBoolValue(true),
+			successKey: structpb.NewBoolValue(true),
 		},
 	}, nil, nil
 }
@@ -153,7 +157,7 @@ func (c *Connector) handleEnableUser(
 
 	return &structpb.Struct{
 		Fields: map[string]*structpb.Value{
-			"success": structpb.NewBoolValue(true),
+			successKey: structpb.NewBoolValue(true),
 		},
 	}, nil, nil
 }
