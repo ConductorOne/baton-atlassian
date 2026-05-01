@@ -102,7 +102,7 @@ func (d *Connector) Validate(_ context.Context) (annotations.Annotations, error)
 }
 
 // New returns a new instance of the connector.
-func New(ctx context.Context, accessToken, scimToken, organizationID, scimBaseUrl string) (*Connector, error) {
+func New(ctx context.Context, accessToken, scimToken, organizationID, scimBaseUrl, baseURL string) (*Connector, error) {
 	l := ctxzap.Extract(ctx)
 
 	clientOpts := []client.Option{
@@ -116,6 +116,10 @@ func New(ctx context.Context, accessToken, scimToken, organizationID, scimBaseUr
 
 	if scimBaseUrl != "" {
 		clientOpts = append(clientOpts, client.WithScimBaseUrl(scimBaseUrl))
+	}
+
+	if baseURL != "" {
+		clientOpts = append(clientOpts, client.WithBaseURL(baseURL))
 	}
 
 	atlassianClient, err := client.New(ctx, clientOpts...)
