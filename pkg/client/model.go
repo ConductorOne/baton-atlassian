@@ -168,3 +168,30 @@ type Organization struct {
 		Self string `json:"self"`
 	} `json:"links"`
 }
+
+type APITokenResponse struct {
+	Data  []APIToken `json:"data"`
+	Links struct {
+		Next string `json:"next"`
+		Prev string `json:"prev"`
+		Self string `json:"self"`
+	} `json:"links"`
+}
+
+// APIToken is a user API token enumerated org-wide via the admin API-access endpoint
+// GET /admin/api-access/v1/orgs/{orgId}/api-tokens.
+type APIToken struct {
+	ID           string   `json:"id"`
+	Label        string   `json:"label"`
+	Status       string   `json:"status"`
+	CreatedAt    string   `json:"createdAt"`
+	ExpiresAt    string   `json:"expiresAt"`
+	LastActiveAt string   `json:"lastActiveAt"`
+	Scopes       []string `json:"scopes"`
+	User         struct {
+		ID    string `json:"id"`
+		OrgID string `json:"orgId"`
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	} `json:"user"`
+}

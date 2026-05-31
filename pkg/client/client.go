@@ -27,6 +27,8 @@ const (
 	userRestoreAccessEP = "v1/orgs/%s/directory/users/%s/restore-access"
 
 	organizationEP = "v1/orgs/%s"
+
+	apiTokensEP = "api-access/v1/orgs/%s/api-tokens"
 )
 
 type AtlassianClient struct {
@@ -163,6 +165,36 @@ func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) ([]Us
 	nextPageToken := usersResponse.Links.Next
 
 	return usersResponse.Data, nextPageToken, nil
+}
+
+// ListAPITokens enumerates all user API tokens in the organization via the admin
+// API-access endpoint. Requires the organization API key (the access token this client
+// already uses); Forge/OAuth2 apps cannot access this resource.
+func (c *AtlassianClient) ListAPITokens(ctx context.Context, pageToken string) ([]APIToken, string, error) {
+	var tokensResponse APITokenResponse
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(apiTokensEP, c.config.organizationID))
+	if err != nil {
+		return nil, "", err
+	}
+
+	reqOpts := []RequestOpt{WithPageSize(maxItemsPerPage)}
+	if pageToken != "" {
+		reqOpts = append(reqOpts, WithPageToken(pageToken))
+	}
+	_, err = c.doRequest(ctx,
+		http.MethodGet,
+		requestURL,
+		&tokensResponse,
+		nil,
+		reqOpts...,
+	)
+	if err != nil {
+		return nil, "", err
+	}
+
+	nextPageToken := tokensResponse.Links.Next
+
+	return tokensResponse.Data, nextPageToken, nil
 }
 
 func (c *AtlassianClient) ListWorkspaces(ctx context.Context, pageToken string) ([]Workspace, string, error) {

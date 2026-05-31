@@ -24,6 +24,7 @@ func (d *Connector) ResourceSyncers(_ context.Context) []connectorbuilder.Resour
 		newWorkspaceBuilder(d.client),
 		newGroupBuilder(d.client),
 		newOrganizationBuilder(d.client),
+		newAPITokenBuilder(d.client),
 	}
 }
 
