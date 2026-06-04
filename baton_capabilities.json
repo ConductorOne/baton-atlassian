@@ -3,6 +3,19 @@
   "resourceTypeCapabilities": [
     {
       "resourceType": {
+        "id": "api_token",
+        "displayName": "API Token",
+        "traits": [
+          "TRAIT_SECRET"
+        ]
+      },
+      "capabilities": [
+        "CAPABILITY_SYNC"
+      ],
+      "permissions": {}
+    },
+    {
+      "resourceType": {
         "id": "group",
         "displayName": "Group",
         "traits": [
