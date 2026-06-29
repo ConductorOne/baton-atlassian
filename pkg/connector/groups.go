@@ -198,6 +198,38 @@ func (b *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken
 	return grantResources, "", nil, nil
 }
 
+func (b *groupBuilder) Grant(ctx context.Context, principal *v2.Resource, entitlement *v2.Entitlement) (annotations.Annotations, error) {
+	if principal.Id.ResourceType != userResourceType.Id {
+		return nil, fmt.Errorf("baton-atlassian: only users can be granted group membership")
+	}
+
+	groupID := entitlement.Resource.Id.Resource
+	userID := principal.Id.Resource
+
+	err := b.client.AddUserToGroup(ctx, groupID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("baton-atlassian: failed to add user to group: %w", err)
+	}
+
+	return nil, nil
+}
+
+func (b *groupBuilder) Revoke(ctx context.Context, grant *v2.Grant) (annotations.Annotations, error) {
+	if grant.Principal.Id.ResourceType != userResourceType.Id {
+		return nil, fmt.Errorf("baton-atlassian: only users can be removed from group membership")
+	}
+
+	groupID := grant.Entitlement.Resource.Id.Resource
+	userID := grant.Principal.Id.Resource
+
+	err := b.client.RemoveUserFromGroup(ctx, groupID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("baton-atlassian: failed to remove user from group: %w", err)
+	}
+
+	return nil, nil
+}
+
 func parseIntoGroupResource(group client.Group) (*v2.Resource, error) {
 	profile := map[string]interface{}{
 		"name":        group.Name,

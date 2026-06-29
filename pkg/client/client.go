@@ -19,6 +19,8 @@ const (
 	groupsEP               = "v2/orgs/%s/directories/-/groups"
 	usersRoleAssignmentEP  = "v2/orgs/%s/directories/-/users/%s/role-assignments"
 	groupsRoleAssignmentEP = "v2/orgs/%s/directories/-/groups/%s/role-assignments"
+	groupMembershipsEP     = "v2/orgs/%s/directories/-/groups/%s/memberships"
+	groupMembershipEP      = "v2/orgs/%s/directories/-/groups/%s/memberships/%s"
 
 	userAssignRolesEP = "v1/orgs/%s/users/%s/roles/assign"
 	userRevokeRolesEP = "v1/orgs/%s/users/%s/roles/revoke"
@@ -304,6 +306,40 @@ func (c *AtlassianClient) GetGroupRoleAssignments(ctx context.Context, pageToken
 
 	nextPageToken := roleAssignmentsResponse.Links.Next
 	return roleAssignmentsResponse.Data, nextPageToken, nil
+}
+
+func (c *AtlassianClient) AddUserToGroup(ctx context.Context, groupID, accountID string) error {
+	requestBody := struct {
+		AccountId string `json:"accountId"`
+	}{
+		AccountId: accountID,
+	}
+
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupMembershipsEP, c.config.organizationID, groupID))
+	if err != nil {
+		return err
+	}
+
+	_, err = c.doRequest(ctx, http.MethodPost, requestURL, nil, requestBody)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *AtlassianClient) RemoveUserFromGroup(ctx context.Context, groupID, accountID string) error {
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupMembershipEP, c.config.organizationID, groupID, accountID))
+	if err != nil {
+		return err
+	}
+
+	_, err = c.doRequest(ctx, http.MethodDelete, requestURL, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *AtlassianClient) AssignRoleToUser(ctx context.Context, userID, workspaceID, roleID string) error {
