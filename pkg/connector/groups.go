@@ -204,14 +204,13 @@ func parseIntoGroupResource(group client.Group) (*v2.Resource, error) {
 		"description": group.Description,
 	}
 
-	groupTraits := []resource.GroupTraitOption{
-		resource.WithGroupProfile(profile),
-	}
+	groupTraits := []resource.GroupTraitOption{}
 	return resource.NewGroupResource(
 		group.Name,
 		groupResourceType,
 		group.ID,
 		groupTraits,
+		resource.WithResourceProfile(profile),
 	)
 }
 
