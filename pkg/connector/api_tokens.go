@@ -69,8 +69,9 @@ func parseIntoAPITokenResource(token client.APIToken) (*v2.Resource, error) {
 		resource.WithSecretDetail("atlassian.api_token"),
 	}
 
+	var resourceOpts []resource.ResourceOption
 	if ts, ok := parseAtlassianTime(token.CreatedAt); ok {
-		traitOpts = append(traitOpts, resource.WithSecretCreatedAt(ts))
+		resourceOpts = append(resourceOpts, resource.WithResourceCreatedAt(ts))
 	}
 	if ts, ok := parseAtlassianTime(token.ExpiresAt); ok {
 		traitOpts = append(traitOpts, resource.WithSecretExpiresAt(ts))
@@ -97,6 +98,7 @@ func parseIntoAPITokenResource(token client.APIToken) (*v2.Resource, error) {
 		apiTokenResourceType,
 		token.ID,
 		traitOpts,
+		resourceOpts...,
 	)
 }
 
