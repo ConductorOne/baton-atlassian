@@ -3,6 +3,9 @@ package client
 import (
 	"fmt"
 	"strconv"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // maxItemsPerPage that the API allows is 100. The default value is 20.
@@ -41,4 +44,8 @@ func (er *APIError) Message() string {
 		return fmt.Sprintf("API error response detail: %s", er.Errors[0].Detail)
 	}
 	return "Error response empty"
+}
+
+func IsNotFound(err error) bool {
+	return status.Code(err) == codes.NotFound
 }

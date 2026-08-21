@@ -4,7 +4,7 @@
 
 `baton-atlassian` is a connector for [Atlassian](https://www.atlassian.com) built using the [Baton SDK](https://github.com/conductorone/baton-sdk).
 This connector is intended to use for managing general aspects of an Atlassian Organization, not specifically limited to any product or site.
-People will be able to provision Roles for the users on different Workspaces (product-site) if they have the Atlassian feature enabled for their organization.
+People will be able to provision Roles for the users on different Workspaces (product-site) if they have the Atlassian feature enabled for their organization. Users can also be provisioned into and out of groups (group membership).
 
 Check out [Baton](https://github.com/conductorone/baton) to learn more the project in general.
 
