@@ -49,3 +49,7 @@ func (er *APIError) Message() string {
 func IsNotFound(err error) bool {
 	return status.Code(err) == codes.NotFound
 }
+
+func IsAlreadyExists(err error) bool {
+	return status.Code(err) == codes.AlreadyExists
+}
