@@ -9,6 +9,8 @@ import (
 
 	"github.com/conductorone/baton-sdk/pkg/uhttp"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -327,6 +329,10 @@ func (c *AtlassianClient) GetGroupDirectoryID(ctx context.Context, groupID strin
 		return "", err
 	}
 
+	if groupResponse.Data.DirectoryId == "" {
+		return "", status.Error(codes.Internal, "baton-atlassian: group detail response missing directory id")
+	}
+
 	return groupResponse.Data.DirectoryId, nil
 }
 
@@ -563,7 +569,7 @@ func (c *AtlassianClient) doRequest(
 		}
 
 	case http.MethodDelete:
-		resp, err = c.wrapper.Do(req)
+		resp, err = c.wrapper.Do(req, uhttp.WithErrorResponse(&apiErr))
 		if resp != nil {
 			defer resp.Body.Close()
 		}
