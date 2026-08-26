@@ -9,6 +9,8 @@ import (
 
 	"github.com/conductorone/baton-sdk/pkg/uhttp"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -19,6 +21,9 @@ const (
 	groupsEP               = "v2/orgs/%s/directories/-/groups"
 	usersRoleAssignmentEP  = "v2/orgs/%s/directories/-/users/%s/role-assignments"
 	groupsRoleAssignmentEP = "v2/orgs/%s/directories/-/groups/%s/role-assignments"
+	groupDetailEP          = "v2/orgs/%s/directories/-/groups/%s"
+	groupMembershipsEP     = "v2/orgs/%s/directories/%s/groups/%s/memberships"
+	groupMembershipEP      = "v2/orgs/%s/directories/%s/groups/%s/memberships/%s"
 
 	userAssignRolesEP = "v1/orgs/%s/users/%s/roles/assign"
 	userRevokeRolesEP = "v1/orgs/%s/users/%s/roles/revoke"
@@ -306,6 +311,77 @@ func (c *AtlassianClient) GetGroupRoleAssignments(ctx context.Context, pageToken
 	return roleAssignmentsResponse.Data, nextPageToken, nil
 }
 
+// GetGroupDirectoryID resolves a group's directory id. GET v2/orgs/{org}/directories/-/groups/{groupID}. Requires read:groups:admin.
+func (c *AtlassianClient) GetGroupDirectoryID(ctx context.Context, groupID string) (string, error) {
+	var groupResponse GroupDetailResponse
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupDetailEP, c.config.organizationID, groupID))
+	if err != nil {
+		return "", err
+	}
+
+	_, err = c.doRequest(ctx,
+		http.MethodGet,
+		requestURL,
+		&groupResponse,
+		nil,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	if groupResponse.Data.DirectoryId == "" {
+		return "", status.Error(codes.Internal, "baton-atlassian: group detail response missing directory id")
+	}
+
+	return groupResponse.Data.DirectoryId, nil
+}
+
+// AddUserToGroup adds a user to a group. POST v2/orgs/{org}/directories/{directoryID}/groups/{groupID}/memberships. Requires an unscoped organization API key.
+func (c *AtlassianClient) AddUserToGroup(ctx context.Context, directoryID, groupID, accountID string) error {
+	requestBody := struct {
+		AccountId string `json:"accountId"`
+	}{
+		AccountId: accountID,
+	}
+
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupMembershipsEP, c.config.organizationID, directoryID, groupID))
+	if err != nil {
+		return err
+	}
+
+	_, err = c.doRequest(ctx,
+		http.MethodPost,
+		requestURL,
+		nil,
+		requestBody,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// RemoveUserFromGroup removes a user from a group. DELETE v2/orgs/{org}/directories/{directoryID}/groups/{groupID}/memberships/{accountID}. Requires an unscoped organization API key.
+func (c *AtlassianClient) RemoveUserFromGroup(ctx context.Context, directoryID, groupID, accountID string) error {
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupMembershipEP, c.config.organizationID, directoryID, groupID, accountID))
+	if err != nil {
+		return err
+	}
+
+	_, err = c.doRequest(ctx,
+		http.MethodDelete,
+		requestURL,
+		nil,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c *AtlassianClient) AssignRoleToUser(ctx context.Context, userID, workspaceID, roleID string) error {
 	requestBody := RoleAssignmentBody{
 		Role:     roleID,
@@ -493,7 +569,7 @@ func (c *AtlassianClient) doRequest(
 		}
 
 	case http.MethodDelete:
-		resp, err = c.wrapper.Do(req)
+		resp, err = c.wrapper.Do(req, uhttp.WithErrorResponse(&apiErr))
 		if resp != nil {
 			defer resp.Body.Close()
 		}

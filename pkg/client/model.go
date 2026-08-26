@@ -110,6 +110,10 @@ type Group struct {
 	} `json:"links"`
 }
 
+type GroupDetailResponse struct {
+	Data Group `json:"data"`
+}
+
 type RoleAssignmentsResponse struct {
 	Data  []RoleAssignment `json:"data"`
 	Links struct {
