@@ -213,7 +213,7 @@ func (b *groupBuilder) Grant(ctx context.Context, principal *v2.Resource, entitl
 
 	err = b.client.AddUserToGroup(ctx, directoryID, groupID, accountID)
 	if err != nil {
-		if client.IsAlreadyExists(err) {
+		if client.IsAlreadyMember(err) {
 			return annotations.New(&v2.GrantAlreadyExists{}), nil
 		}
 		return nil, fmt.Errorf("baton-atlassian: failed to add user to group: %w", err)
@@ -240,9 +240,6 @@ func (b *groupBuilder) Revoke(ctx context.Context, grant *v2.Grant) (annotations
 
 	err = b.client.RemoveUserFromGroup(ctx, directoryID, groupID, accountID)
 	if err != nil {
-		if client.IsNotFound(err) {
-			return annotations.New(&v2.GrantAlreadyRevoked{}), nil
-		}
 		return nil, fmt.Errorf("baton-atlassian: failed to remove user from group: %w", err)
 	}
 

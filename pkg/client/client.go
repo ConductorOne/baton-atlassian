@@ -575,7 +575,7 @@ func (c *AtlassianClient) doRequest(
 		}
 	}
 	if err != nil {
-		return nil, err
+		return nil, &requestError{grpcErr: err, body: apiErr}
 	}
 
 	return resp.Header, nil

@@ -2,14 +2,20 @@ package client
 
 import "time"
 
+type APIErrorDetail struct {
+	Id     string `json:"id"`
+	Status string `json:"status"`
+	Code   string `json:"code"`
+	Title  string `json:"title"`
+	Detail string `json:"detail"`
+}
+
+// APIError models both of Atlassian's error envelopes: the directory endpoints return
+// {"errors":[...]}, the org-routing layer returns a flat body whose reason is in "message".
+// Reading the second's message keeps the failure reason instead of "Error response empty".
 type APIError struct {
-	Errors []struct {
-		Id     string `json:"id"`
-		Status string `json:"status"`
-		Code   string `json:"code"`
-		Title  string `json:"title"`
-		Detail string `json:"detail"`
-	} `json:"errors"`
+	Errors []APIErrorDetail `json:"errors"`
+	Msg    string           `json:"message"`
 }
 
 type UserResponse struct {
