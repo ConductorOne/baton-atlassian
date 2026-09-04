@@ -11,6 +11,8 @@ import (
 	"github.com/conductorone/baton-sdk/pkg/types/entitlement"
 	"github.com/conductorone/baton-sdk/pkg/types/grant"
 	"github.com/conductorone/baton-sdk/pkg/types/resource"
+	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	"go.uber.org/zap"
 )
 
 // Pagination phases for group grants.
@@ -215,6 +217,12 @@ func (b *groupBuilder) Grant(ctx context.Context, principal *v2.Resource, entitl
 	if err != nil {
 		if client.IsAlreadyMember(err) {
 			return annotations.New(&v2.GrantAlreadyExists{}), nil
+		}
+		if client.IsConflict(err) {
+			ctxzap.Extract(ctx).Debug(
+				"baton-atlassian: 409 on add-to-group with unrecognized code, treating as failure",
+				zap.String("code", client.ErrorCode(err)),
+			)
 		}
 		return nil, fmt.Errorf("baton-atlassian: failed to add user to group: %w", err)
 	}

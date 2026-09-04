@@ -95,3 +95,14 @@ func IsAlreadyMember(err error) bool {
 	body, ok := apiErrorFrom(err)
 	return ok && body.FirstCode() == codeAlreadyMember
 }
+
+func IsConflict(err error) bool {
+	return status.Code(err) == codes.AlreadyExists
+}
+
+func ErrorCode(err error) string {
+	if body, ok := apiErrorFrom(err); ok {
+		return body.FirstCode()
+	}
+	return ""
+}
