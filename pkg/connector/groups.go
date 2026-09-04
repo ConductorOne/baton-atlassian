@@ -219,9 +219,12 @@ func (b *groupBuilder) Grant(ctx context.Context, principal *v2.Resource, entitl
 			return annotations.New(&v2.GrantAlreadyExists{}), nil
 		}
 		if client.IsConflict(err) {
-			ctxzap.Extract(ctx).Debug(
+			ctxzap.Extract(ctx).Warn(
 				"baton-atlassian: 409 on add-to-group with unrecognized code, treating as failure",
 				zap.String("code", client.ErrorCode(err)),
+				zap.String("group_id", groupID),
+				zap.String("account_id", accountID),
+				zap.Error(err),
 			)
 		}
 		return nil, fmt.Errorf("baton-atlassian: failed to add user to group: %w", err)

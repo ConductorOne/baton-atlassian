@@ -89,14 +89,26 @@ func TestIsAlreadyMember(t *testing.T) {
 	}
 }
 
-func TestIsNotFoundThroughWrapping(t *testing.T) {
-	err := fmt.Errorf("baton-atlassian: resolve directory: %w",
-		&requestError{grpcErr: status.Error(codes.NotFound, "404"), body: APIError{}})
-	if !IsNotFound(err) {
-		t.Errorf("IsNotFound() = false, want true")
+// A numeric errors[].status must not fail the whole-body unmarshal and drop Code.
+func TestAPIErrorDetailStatusUnmarshal(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+	}{
+		{name: "string status", body: `{"errors":[{"status":"404","code":"ADMIN-UAM-404-1"}]}`},
+		{name: "numeric status", body: `{"errors":[{"status":404,"code":"ADMIN-UAM-404-1"}]}`},
+		{name: "null status", body: `{"errors":[{"status":null,"code":"ADMIN-UAM-404-1"}]}`},
 	}
-	if status.Code(err) != codes.NotFound {
-		t.Errorf("status.Code() = %v, want NotFound", status.Code(err))
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var apiErr APIError
+			if err := json.Unmarshal([]byte(tc.body), &apiErr); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			if got := apiErr.FirstCode(); got != "ADMIN-UAM-404-1" {
+				t.Errorf("FirstCode() = %q, want ADMIN-UAM-404-1", got)
+			}
+		})
 	}
 }
 

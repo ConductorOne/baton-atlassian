@@ -1,13 +1,18 @@
 package client
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type APIErrorDetail struct {
-	Id     string `json:"id"`
-	Status string `json:"status"`
-	Code   string `json:"code"`
-	Title  string `json:"title"`
-	Detail string `json:"detail"`
+	Id string `json:"id"`
+	// json.Number so a numeric status doesn't fail the whole APIError unmarshal,
+	// which would drop Code and make IsAlreadyMember treat a benign 409 as a failure.
+	Status json.Number `json:"status"`
+	Code   string      `json:"code"`
+	Title  string      `json:"title"`
+	Detail string      `json:"detail"`
 }
 
 // APIError models both of Atlassian's error envelopes: the directory endpoints return

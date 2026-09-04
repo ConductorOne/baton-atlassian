@@ -81,10 +81,6 @@ func apiErrorFrom(err error) (*APIError, bool) {
 	return nil, false
 }
 
-func IsNotFound(err error) bool {
-	return status.Code(err) == codes.NotFound
-}
-
 // IsAlreadyMember reports whether err is the benign 409 where the user is already a group member.
 // Atlassian returns 204 for a genuine re-add, so only the resource-conflict code is idempotent; a
 // licence-limit 409 returns false and propagates as a failure.
