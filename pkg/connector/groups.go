@@ -232,9 +232,6 @@ func (b *groupBuilder) Revoke(ctx context.Context, grant *v2.Grant) (annotations
 
 	directoryID, err := b.client.GetGroupDirectoryID(ctx, groupID)
 	if err != nil {
-		if client.IsNotFound(err) {
-			return annotations.New(&v2.GrantAlreadyRevoked{}), nil
-		}
 		return nil, fmt.Errorf("baton-atlassian: failed to resolve group directory: %w", err)
 	}
 

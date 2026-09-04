@@ -73,9 +73,6 @@ type requestError struct {
 func (e *requestError) Error() string { return e.grpcErr.Error() }
 func (e *requestError) Unwrap() error { return e.grpcErr }
 
-// GRPCStatus lets status.Code(err) recover the code even when this error is wrapped with %w.
-func (e *requestError) GRPCStatus() *status.Status { return status.Convert(e.grpcErr) }
-
 func apiErrorFrom(err error) (*APIError, bool) {
 	var re *requestError
 	if errors.As(err, &re) {
