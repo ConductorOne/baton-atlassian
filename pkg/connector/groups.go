@@ -11,8 +11,6 @@ import (
 	"github.com/conductorone/baton-sdk/pkg/types/entitlement"
 	"github.com/conductorone/baton-sdk/pkg/types/grant"
 	"github.com/conductorone/baton-sdk/pkg/types/resource"
-	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
-	"go.uber.org/zap"
 )
 
 // Pagination phases for group grants.
@@ -218,16 +216,7 @@ func (b *groupBuilder) Grant(ctx context.Context, principal *v2.Resource, entitl
 		if client.IsAlreadyMember(err) {
 			return annotations.New(&v2.GrantAlreadyExists{}), nil
 		}
-		if client.IsConflict(err) {
-			ctxzap.Extract(ctx).Warn(
-				"baton-atlassian: 409 on add-to-group with unrecognized code, treating as failure",
-				zap.String("code", client.ErrorCode(err)),
-				zap.String("group_id", groupID),
-				zap.String("account_id", accountID),
-				zap.Error(err),
-			)
-		}
-		return nil, fmt.Errorf("baton-atlassian: failed to add user to group: %w", err)
+		return nil, fmt.Errorf("baton-atlassian: failed to add user to group (code %q): %w", client.ErrorCode(err), err)
 	}
 
 	return nil, nil
@@ -246,6 +235,8 @@ func (b *groupBuilder) Revoke(ctx context.Context, grant *v2.Grant) (annotations
 		return nil, fmt.Errorf("baton-atlassian: failed to resolve group directory: %w", err)
 	}
 
+	// Atlassian returns 204 for an already-absent membership (live-measured, CXH-2373), so a
+	// repeat revoke is already idempotent here and needs no GrantAlreadyRevoked branch.
 	err = b.client.RemoveUserFromGroup(ctx, directoryID, groupID, accountID)
 	if err != nil {
 		return nil, fmt.Errorf("baton-atlassian: failed to remove user from group: %w", err)
