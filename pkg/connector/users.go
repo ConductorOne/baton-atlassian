@@ -244,6 +244,23 @@ func (b *userBuilder) CreateAccount(ctx context.Context, accountInfo *v2.Account
 	}, nil, nil, nil
 }
 
+func (b *userBuilder) Delete(ctx context.Context, resourceId *v2.ResourceId) (annotations.Annotations, error) {
+	accountID := resourceId.GetResource()
+	if accountID == "" {
+		return nil, fmt.Errorf("baton-atlassian: delete user: missing account ID")
+	}
+
+	err := b.client.DeleteUser(ctx, accountID)
+	if err != nil {
+		if client.IsAccountNotFound(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("baton-atlassian: delete user: %w", err)
+	}
+
+	return nil, nil
+}
+
 func scimUserToUser(scimUser *client.SCIMUserResponse) client.User {
 	var email string
 	for _, e := range scimUser.Emails {
@@ -261,8 +278,13 @@ func scimUserToUser(scimUser *client.SCIMUserResponse) client.User {
 		status = statusActive
 	}
 
+	accountID := scimUser.Extension.AtlassianAccountID
+	if accountID == "" {
+		accountID = scimUser.ID
+	}
+
 	return client.User{
-		AccountId:     scimUser.ID,
+		AccountId:     accountID,
 		Status:        status,
 		AccountStatus: status,
 		Name:          scimUser.DisplayName,

@@ -21,6 +21,8 @@ The connector can also add and remove users from Atlassian groups. Group members
 
 The Atlassian connector supports [automatic account provisioning](/product/admin/account-provisioning) via SCIM API. New users are created in the directory without passwords. If a managed Atlassian account already exists for the specified email address, the user will be linked to that existing account.
 
+The connector also supports account deprovisioning. When C1 deprovisions a user, the connector deletes their Atlassian account, which removes their access to every Atlassian product in the organization. Atlassian keeps the account deactivated for a 14-day grace period before the deletion is permanent. Deprovisioning only works for managed accounts (accounts on a domain your organization has verified) and uses the organization API key.
+
 ### Connector actions
 
 Connector actions are custom capabilities that extend C1 automations with app-specific operations. You can use connector actions in the [Perform connector action](/product/admin/automations-steps-reference#perform-connector-action) automation step.

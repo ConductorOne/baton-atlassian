@@ -1,0 +1,2931 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "baton-atlassian connector API surface",
+    "version": "1.0.0",
+    "description": "OpenAPI description of the Atlassian endpoints baton-atlassian actually calls (pkg/client/client.go). Not the vendor's full API; see .claude/skills/connector/build-openapi-spec.md. baton-atlassian's `--base-url` config override (pkg/client/client.go WithBaseURL) replaces both the admin and lifecycle base URLs in tests; that override is a connector test seam, not a documented vendor server, and is intentionally not modeled here."
+  },
+  "servers": [
+    {
+      "url": "https://api.atlassian.com/admin",
+      "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+    },
+    {
+      "url": "https://api.atlassian.com",
+      "description": "Atlassian user-management lifecycle API. Used only by the account-deletion endpoint."
+    },
+    {
+      "url": "{scimBaseUrl}",
+      "description": "Tenant-specific SCIM base URL (includes the SCIM directory ID segment), generated when connecting an identity provider via SCIM provisioning in Atlassian Administration.",
+      "variables": {
+        "scimBaseUrl": {
+          "default": "https://api.atlassian.com/scim/directory/REPLACE_WITH_TENANT_DIRECTORY_ID",
+          "description": "Full SCIM base URL for the tenant, obtained from Atlassian Administration > Security > SCIM provisioning when connecting an identity provider. Configured in the connector via the `scim-base-url` / `BATON_SCIM_BASE_URL` field. NOTE: baton-atlassian's `--base-url` test override replaces the admin and lifecycle base URLs only; it does not affect this SCIM base URL, which is always configured separately."
+        }
+      }
+    }
+  ],
+  "security": [
+    {
+      "orgApiKey": []
+    }
+  ],
+  "paths": {
+    "/v1/orgs/{orgId}": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com/admin",
+          "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+        }
+      ],
+      "get": {
+        "operationId": "getOrgById",
+        "summary": "Get an organization by ID",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
+          "accessed": "2026-10-05",
+          "client": "pkg/client/client.go:109",
+          "evidence": "vendor spec"
+        }
+      }
+    },
+    "/v2/orgs/{orgId}/directories/{directoryId}/users": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com/admin",
+          "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+        }
+      ],
+      "get": {
+        "operationId": "getDirectoryUsers",
+        "summary": "List directory users",
+        "description": "Called from two client.go sites: ListUsers (client.go:158, no groupIds filter) and GetGroupMembers (client.go:128, sets groupIds to one group ID to list that group's members).",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "directoryId",
+            "in": "path",
+            "required": true,
+            "description": "Directory ID. The connector always passes the literal `-`, which per the vendor's `directoryIdParam` description means \"all directories the requestor has permission to manage\".",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "-"
+              ]
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Pagination cursor. The connector sets this from the previous page's `links.next` value (WithPageToken). Vendor: opaque cursor token, not a full URL, for the admin v2 directory endpoints.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size. The connector caps this at 100 (maxItemsPerPage) via WithPageSize. Vendor default 20, vendor max 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "groupIds",
+            "in": "query",
+            "required": false,
+            "description": "Filter to users who are members of these group IDs. Only sent by GetGroupMembers (client.go); ListUsers does not send it.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "maxItems": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization, directory, or user not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
+          "accessed": "2026-10-05",
+          "client": "pkg/client/client.go:128,158",
+          "evidence": "vendor spec"
+        }
+      }
+    },
+    "/api-access/v1/orgs/{orgId}/api-tokens": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com/admin",
+          "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+        }
+      ],
+      "get": {
+        "operationId": "getAllApiTokensByOrgId",
+        "summary": "List all API tokens in an org",
+        "description": "client.go sends the page-size query param as `limit` (via the shared WithPageSize helper), but the vendor spec for this endpoint names that parameter `pageSize` (ApiTokenPageSize), not `limit`; unlike the admin v2 directory endpoints, which do use `limit`. Modeled here as `limit` because that is what the connector actually sends; see the blocker note in the PR provenance table.",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Pagination cursor. The connector sets this from the previous page's `links.next` value (WithPageToken). Vendor: opaque cursor token, not a full URL, for the admin v2 directory endpoints.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size. The connector caps this at 100 (maxItemsPerPage) via WithPageSize. Vendor default 20, vendor max 1000.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returned if the request is successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APITokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Returned if request is not in correct format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned if the user does not have correct permissions to read user API tokens.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/api-access/swagger.v3.json",
+          "accessed": "2026-10-05",
+          "client": "pkg/client/client.go:188",
+          "evidence": "vendor spec"
+        }
+      }
+    },
+    "/v2/orgs/{orgId}/workspaces": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com/admin",
+          "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+        }
+      ],
+      "post": {
+        "operationId": "queryWorkspacesV2",
+        "summary": "Query workspaces",
+        "description": "Vendor SearchWorkspacesRequestV2 supports query/limit/sort/cursor; client.go (ListWorkspaces) only ever sends `cursor`; per vendor docs, when cursor is set no other properties may be present, so the connector leaves limit at the API default (20) on subsequent pages.",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListWorkspacesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApplicationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProxyError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApplicationError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApplicationError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApplicationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
+          "accessed": "2026-10-05",
+          "client": "pkg/client/client.go:215",
+          "evidence": "vendor spec"
+        }
+      }
+    },
+    "/v2/orgs/{orgId}/directories/{directoryId}/groups": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com/admin",
+          "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+        }
+      ],
+      "get": {
+        "operationId": "getGroups",
+        "summary": "List groups",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "directoryId",
+            "in": "path",
+            "required": true,
+            "description": "Directory ID. The connector always passes the literal `-`, which per the vendor's `directoryIdParam` description means \"all directories the requestor has permission to manage\".",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "-"
+              ]
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Pagination cursor. The connector sets this from the previous page's `links.next` value (WithPageToken). Vendor: opaque cursor token, not a full URL, for the admin v2 directory endpoints.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size. The connector caps this at 100 (maxItemsPerPage) via WithPageSize. Vendor default 20, vendor max 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returned if the request is successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request not in correct format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization ID or directory ID not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API rate limit reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
+          "accessed": "2026-10-05",
+          "client": "pkg/client/client.go:243",
+          "evidence": "vendor spec"
+        }
+      }
+    },
+    "/v2/orgs/{orgId}/directories/{directoryId}/users/{accountId}/role-assignments": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com/admin",
+          "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+        }
+      ],
+      "get": {
+        "operationId": "getUserRoleAssignments",
+        "summary": "Get user role assignments",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "directoryId",
+            "in": "path",
+            "required": true,
+            "description": "Directory ID. The connector always passes the literal `-`, which per the vendor's `directoryIdParam` description means \"all directories the requestor has permission to manage\".",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "-"
+              ]
+            }
+          },
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "description": "Vendor accountIdParam; connector's Go argument is named userID.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Pagination cursor. The connector sets this from the previous page's `links.next` value (WithPageToken). Vendor: opaque cursor token, not a full URL, for the admin v2 directory endpoints.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size. The connector caps this at 100 (maxItemsPerPage) via WithPageSize. Vendor default 20, vendor max 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returned if the request is successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleAssignmentsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request not in correct format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization ID or directory ID not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API rate limit reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
+          "accessed": "2026-10-05",
+          "client": "pkg/client/client.go:270",
+          "evidence": "vendor spec"
+        }
+      }
+    },
+    "/v2/orgs/{orgId}/directories/{directoryId}/groups/{groupId}/role-assignments": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com/admin",
+          "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+        }
+      ],
+      "get": {
+        "operationId": "getGroupRoleAssignments",
+        "summary": "Get group role assignments",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "directoryId",
+            "in": "path",
+            "required": true,
+            "description": "Directory ID. The connector always passes the literal `-`, which per the vendor's `directoryIdParam` description means \"all directories the requestor has permission to manage\".",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "-"
+              ]
+            }
+          },
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian group ID.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Pagination cursor. The connector sets this from the previous page's `links.next` value (WithPageToken). Vendor: opaque cursor token, not a full URL, for the admin v2 directory endpoints.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size. The connector caps this at 100 (maxItemsPerPage) via WithPageSize. Vendor default 20, vendor max 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returned if the request is successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleAssignmentsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request not in correct format.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization ID or directory ID not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API rate limit reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
+          "accessed": "2026-10-05",
+          "client": "pkg/client/client.go:297",
+          "evidence": "vendor spec"
+        }
+      }
+    },
+    "/v2/orgs/{orgId}/directories/{directoryId}/groups/{groupId}": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com/admin",
+          "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+        }
+      ],
+      "get": {
+        "operationId": "getGroup",
+        "summary": "Get group detail (used to resolve a group's directory ID)",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "directoryId",
+            "in": "path",
+            "required": true,
+            "description": "Directory ID. The connector always passes the literal `-`, which per the vendor's `directoryIdParam` description means \"all directories the requestor has permission to manage\".",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "-"
+              ]
+            }
+          },
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian group ID.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returned if the request is successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization ID or directory ID not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API rate limit reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
+          "accessed": "2026-10-05",
+          "client": "pkg/client/client.go:325",
+          "evidence": "vendor spec"
+        }
+      }
+    },
+    "/v2/orgs/{orgId}/directories/{directoryId}/groups/{groupId}/memberships": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com/admin",
+          "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+        }
+      ],
+      "post": {
+        "operationId": "addUserToGroup",
+        "summary": "Add user to group",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "directoryId",
+            "in": "path",
+            "required": true,
+            "description": "Directory ID. The connector resolves this at call time via GetGroupDirectoryID (GET .../directories/-/groups/{groupId}) before issuing this request; it is not the literal `-`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian group ID.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddUserToGroupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Success."
+          },
+          "400": {
+            "description": "Malformed request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization, directory, group, or user not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "User already in the group (helper.go IsAlreadyMember treats errors[].code ADMIN-UAM-409-2 as idempotent success) or user limit exceeded for an app the group grants access to.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
+          "accessed": "2026-10-05",
+          "client": "pkg/client/client.go:350",
+          "evidence": "vendor spec"
+        }
+      }
+    },
+    "/v2/orgs/{orgId}/directories/{directoryId}/groups/{groupId}/memberships/{accountId}": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com/admin",
+          "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+        }
+      ],
+      "delete": {
+        "operationId": "removeUserFromGroup",
+        "summary": "Remove user from group",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "directoryId",
+            "in": "path",
+            "required": true,
+            "description": "Directory ID. The connector resolves this at call time via GetGroupDirectoryID (GET .../directories/-/groups/{groupId}) before issuing this request; it is not the literal `-`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian group ID.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian account ID.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success."
+          },
+          "400": {
+            "description": "Malformed request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization, directory, group, or user not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
+          "accessed": "2026-10-05",
+          "client": "pkg/client/client.go:376",
+          "evidence": "vendor spec"
+        }
+      }
+    },
+    "/v1/orgs/{orgId}/users/{userId}/roles/assign": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com/admin",
+          "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+        }
+      ],
+      "post": {
+        "operationId": "assignRole",
+        "summary": "Grant user platform-role access",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian account ID of the user (vendor path parameter is `accountId`; the connector's Go argument is named `userID`).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleAssignmentBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Role assigned successfully."
+          },
+          "400": {
+            "description": "Malformed or failed validation (ADMIN-UAM-400-1, ADMIN-UAM-400-3).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApplicationErrorsEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (ADMIN-401-2) or proxy 401.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AdminProxyError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AdminApplicationErrorsEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unauthorized (ADMIN-UAM-403-1).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApplicationErrorsEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found (ADMIN-UAM-404-3).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApplicationErrorsEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Product license limit exceeded (ADMIN-UAM-409-3).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApplicationErrorsEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProxyError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
+          "accessed": "2026-10-05",
+          "client": "pkg/client/client.go:395",
+          "evidence": "vendor spec"
+        }
+      }
+    },
+    "/v1/orgs/{orgId}/users/{userId}/roles/revoke": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com/admin",
+          "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+        }
+      ],
+      "post": {
+        "operationId": "revokeRole",
+        "summary": "Revoke user platform-role access",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian account ID of the user (vendor path parameter is `accountId`; the connector's Go argument is named `userID`).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleAssignmentBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Role revoked successfully."
+          },
+          "400": {
+            "description": "Malformed or failed validation (ADMIN-UAM-400-1, ADMIN-UAM-400-3).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApplicationErrorsEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (ADMIN-401-2) or proxy 401.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AdminProxyError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AdminApplicationErrorsEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unauthorized (ADMIN-UAM-403-1).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApplicationErrorsEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found (ADMIN-UAM-404-3).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApplicationErrorsEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Product license limit exceeded (ADMIN-UAM-409-3).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApplicationErrorsEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProxyError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error (ADMIN-UAM-500-1).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
+          "accessed": "2026-10-05",
+          "client": "pkg/client/client.go:419",
+          "evidence": "vendor spec"
+        }
+      }
+    },
+    "/v1/orgs/{orgId}/directory/users/{accountId}/suspend-access": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com/admin",
+          "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+        }
+      ],
+      "post": {
+        "operationId": "disableUser",
+        "summary": "Suspend a user's access (client-cited endpoint; absent from the current published vendor spec)",
+        "description": "client.go cites https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-suspend-access-post, but the org.json swagger fetched 2026-10-05 does not list this v1 path; it only documents the v2 equivalent, POST /v2/orgs/{orgId}/directories/{directoryId}/users/{accountId}/suspend. Request/response shape is therefore unproven by machine-readable spec; see the blocker note in the PR provenance table. Per client.go comment, cannot be used on organization administrators (returns 400).",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian account ID.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Assumed success response; not confirmed by vendor spec (client code only)."
+          },
+          "400": {
+            "description": "Cannot be used on organization administrators (client.go comment).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (unproven shape).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (unproven shape).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error (unproven shape).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-suspend-access-post",
+          "accessed": "2026-10-05",
+          "client": "pkg/client/client.go:444",
+          "evidence": "client code only"
+        }
+      }
+    },
+    "/v1/orgs/{orgId}/directory/users/{accountId}/restore-access": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com/admin",
+          "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+        }
+      ],
+      "post": {
+        "operationId": "enableUser",
+        "summary": "Restore a user's access (client-cited endpoint; absent from the current published vendor spec)",
+        "description": "client.go cites https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-restore-access-post, but the org.json swagger fetched 2026-10-05 does not list this v1 path; it only documents the v2 equivalent, POST /v2/orgs/{orgId}/directories/{directoryId}/users/{accountId}/restore. Request/response shape is therefore unproven by machine-readable spec; see the blocker note in the PR provenance table.",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian account ID.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Assumed success response; not confirmed by vendor spec (client code only)."
+          },
+          "401": {
+            "description": "Not authenticated (unproven shape).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (unproven shape).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error (unproven shape).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-restore-access-post",
+          "accessed": "2026-10-05",
+          "client": "pkg/client/client.go:464",
+          "evidence": "client code only"
+        }
+      }
+    },
+    "/users/{accountId}/manage/lifecycle/delete": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com",
+          "description": "Atlassian user-management lifecycle API. Used only by the account-deletion endpoint."
+        }
+      ],
+      "post": {
+        "operationId": "deleteUser",
+        "summary": "Delete a managed account",
+        "description": "Deletes a managed account across every Atlassian product after a 14-day grace period. model.go APIError reads key/errorDetail/context/message/errors[].code/detail from this endpoint's error bodies; IsAccountNotFound (helper.go) checks key == \"accountNotFound\" on 404.",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "description": "Unique ID of the user's account being deleted.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleResultMessage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "You are unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleUnauthorized"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but not authorized to take this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleForbidden"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleNotFoundAccount"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "This account isn't eligible for the requested action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleConflict"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/user-management/swagger.v3.json",
+          "accessed": "2026-10-05",
+          "client": "pkg/client/client.go:484",
+          "evidence": "vendor spec"
+        }
+      }
+    },
+    "/Users": {
+      "servers": [
+        {
+          "url": "{scimBaseUrl}",
+          "description": "Tenant-specific SCIM base URL (includes the SCIM directory ID segment), generated when connecting an identity provider via SCIM provisioning in Atlassian Administration.",
+          "variables": {
+            "scimBaseUrl": {
+              "default": "https://api.atlassian.com/scim/directory/REPLACE_WITH_TENANT_DIRECTORY_ID",
+              "description": "Full SCIM base URL for the tenant, obtained from Atlassian Administration > Security > SCIM provisioning when connecting an identity provider. Configured in the connector via the `scim-base-url` / `BATON_SCIM_BASE_URL` field. NOTE: baton-atlassian's `--base-url` test override replaces the admin and lifecycle base URLs only; it does not affect this SCIM base URL, which is always configured separately."
+            }
+          }
+        }
+      ],
+      "post": {
+        "operationId": "createUser",
+        "summary": "Create a SCIM user",
+        "description": "client.go builds the URL as `{scimBaseUrl}/Users` directly (no literal directoryId path segment); the configured scimBaseUrl already embeds the tenant's SCIM directory ID. Vendor's equivalent operation is `createAUserInAnActiveDirectory`, POST /scim/directory/{directoryId}/Users, where `directoryId` is documented as \"The SCIM base URL that is generated when connecting an identity provider with SCIM provisioning\"; i.e. the same value baton-atlassian stores as scim-base-url.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SCIMCreateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User has been created successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SCIMUserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payload for creation request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScimError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing authorization header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScimFailure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "You are not authorized to call the API.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScimFailure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Directory does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScimError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "User already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScimError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "scimToken": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/user-provisioning/swagger.v3.json",
+          "accessed": "2026-10-05",
+          "client": "pkg/client/client.go:504",
+          "evidence": "vendor spec"
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "orgApiKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Unscoped organization API key, sent as `Authorization: Bearer <token>`. Configured via `--access-token` / `BATON_ACCESS_TOKEN`. Used for every admin-API and lifecycle-API operation (uhttp.WithBearerToken(c.config.accessToken) is the doRequest default)."
+      },
+      "scimToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Per-tenant SCIM bearer token, distinct from the org API key. Configured via `--scim-token` / `BATON_SCIM_TOKEN`. Used only by createUser (client.go passes WithToken(c.config.scimToken))."
+      }
+    },
+    "schemas": {
+      "Organization": {
+        "type": "object",
+        "description": "client.go: Organization (GetOrganization reads id, type, attributes.name, links.self).",
+        "required": [
+          "id",
+          "type",
+          "attributes",
+          "links"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier of the Org."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "orgs"
+            ]
+          },
+          "attributes": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Name of this Org."
+              }
+            }
+          },
+          "links": {
+            "type": "object",
+            "required": [
+              "self"
+            ],
+            "properties": {
+              "self": {
+                "type": "string",
+                "description": "URL to fetch this resource."
+              }
+            }
+          }
+        }
+      },
+      "OrganizationResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Organization"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "description": "client.go: User. Vendor MultiDirectoryUser declares no required fields.",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "example": "12345678-1234-1234-1234-123456789012"
+          },
+          "accountType": {
+            "type": "string",
+            "enum": [
+              "atlassian"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "suspended",
+              "not_invited",
+              "deactivated",
+              "for_deletion"
+            ],
+            "description": "Composite of accountStatus + membershipStatus."
+          },
+          "accountStatus": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive",
+              "closed"
+            ]
+          },
+          "membershipStatus": {
+            "type": "string",
+            "enum": [
+              "active",
+              "suspended",
+              "no_membership"
+            ]
+          },
+          "addedToOrg": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "claimStatus": {
+            "type": "string",
+            "enum": [
+              "managed",
+              "unmanaged"
+            ]
+          },
+          "platformRoles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "atlassian/org-admin",
+                "atlassian/site-admin",
+                "atlassian/user-access-admin",
+                "atlassian/ai-access"
+              ]
+            }
+          },
+          "picture": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "resources": {
+                "type": "integer"
+              }
+            }
+          },
+          "links": {
+            "type": "object",
+            "properties": {
+              "self": {
+                "type": "string",
+                "description": "Cursor to fetch this resource."
+              }
+            }
+          }
+        }
+      },
+      "UserResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/User"
+            }
+          },
+          "links": {
+            "$ref": "#/components/schemas/LinkPageCursor"
+          }
+        }
+      },
+      "LinkPageCursor": {
+        "type": "object",
+        "description": "Pagination links. `next`/`prev`/`self` are opaque cursor tokens for the admin v2 directory endpoints (per vendor LinkPageCursor), not full URLs.",
+        "properties": {
+          "next": {
+            "type": "string",
+            "description": "Cursor to fetch the next page."
+          },
+          "prev": {
+            "type": "string",
+            "description": "Cursor to fetch the previous page."
+          },
+          "self": {
+            "type": "string",
+            "description": "Cursor to fetch this page."
+          }
+        }
+      },
+      "LinkPageURL": {
+        "type": "object",
+        "description": "Pagination links. `next`/`prev`/`self` are full URLs per vendor LinkPageModel (queryWorkspacesV2). client.go passes `links.next` directly back as the request body's `cursor` field on the next call; see the x-source note on ListWorkspaces.",
+        "properties": {
+          "next": {
+            "type": "string"
+          },
+          "prev": {
+            "type": "string"
+          },
+          "self": {
+            "type": "string"
+          }
+        }
+      },
+      "Workspace": {
+        "type": "object",
+        "description": "client.go: Workspace. Vendor WorkspaceModel declares no required fields.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "attributes": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "typeKey": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "owner": {
+                "type": "string",
+                "nullable": true
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "online",
+                  "offline",
+                  "deprecated"
+                ]
+              },
+              "statusDetails": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "icons": {
+                "type": "object"
+              },
+              "avatars": {
+                "type": "object"
+              },
+              "labels": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "sandbox": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "CHILD",
+                      "NONE"
+                    ]
+                  }
+                }
+              },
+              "usage": {
+                "type": "integer",
+                "nullable": true
+              },
+              "capacity": {
+                "type": "integer",
+                "nullable": true
+              },
+              "createdAt": {
+                "type": "string",
+                "nullable": true
+              },
+              "createdBy": {
+                "type": "string",
+                "nullable": true
+              },
+              "updatedAt": {
+                "type": "string",
+                "nullable": true
+              },
+              "hostUrl": {
+                "type": "string",
+                "nullable": true
+              },
+              "realm": {
+                "type": "string"
+              },
+              "regions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "links": {
+            "type": "object",
+            "required": [
+              "self"
+            ],
+            "properties": {
+              "self": {
+                "type": "string"
+              }
+            }
+          },
+          "relationships": {
+            "type": "object"
+          }
+        }
+      },
+      "WorkspaceResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Workspace"
+            }
+          },
+          "links": {
+            "$ref": "#/components/schemas/LinkPageURL"
+          }
+        }
+      },
+      "ListWorkspacesRequest": {
+        "type": "object",
+        "description": "client.go ListWorkspaces sends only `cursor`; vendor SearchWorkspacesRequestV2 also accepts query/limit/sort but the connector never sets them. Per vendor docs: when cursor is present, no other properties may be set.",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Base-64 encoded continuation token. Empty/omitted on the first page."
+          }
+        }
+      },
+      "Group": {
+        "type": "object",
+        "description": "client.go: Group. Vendor MultiDirectoryGroup declares no required fields.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "directoryId": {
+            "type": "string"
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "users": {
+                "type": "integer"
+              },
+              "resources": {
+                "type": "integer"
+              }
+            }
+          },
+          "links": {
+            "type": "object",
+            "properties": {
+              "self": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "GroupResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Group"
+            }
+          },
+          "links": {
+            "$ref": "#/components/schemas/LinkPageCursor"
+          }
+        }
+      },
+      "GroupDetailResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Group"
+          }
+        }
+      },
+      "RoleAssignment": {
+        "type": "object",
+        "description": "client.go: RoleAssignment, shared by GetUserRoleAssignments and GetGroupRoleAssignments. Vendor MultiDirectoryUserRoleAssignment / MultiDirectoryGroupRoleAssignment declare no required fields.",
+        "properties": {
+          "resourceId": {
+            "type": "string",
+            "description": "ARI of the resource.",
+            "example": "ari:cloud:jira-core::site/1"
+          },
+          "resourceOwner": {
+            "type": "string",
+            "example": "jira-core"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "atlassian/user",
+                "atlassian/user-access-admin",
+                "atlassian/admin",
+                "atlassian/guest",
+                "atlassian/contributor",
+                "atlassian/customer",
+                "atlassian/basic",
+                "atlassian/stakeholder",
+                "atlassian/site-admin",
+                "atlassian/org-admin"
+              ]
+            },
+            "description": "Deprecated on the vendor side in favor of roleAssignments, but still the field this connector reads."
+          }
+        }
+      },
+      "RoleAssignmentsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoleAssignment"
+            }
+          },
+          "links": {
+            "$ref": "#/components/schemas/LinkPageCursor"
+          }
+        }
+      },
+      "RoleAssignmentBody": {
+        "type": "object",
+        "description": "helper.go RoleAssignmentBody. Vendor RoleApiRequest.",
+        "required": [
+          "role"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "atlassian/user",
+              "atlassian/user-access-admin",
+              "atlassian/admin",
+              "atlassian/guest",
+              "atlassian/contributor",
+              "atlassian/customer",
+              "atlassian/basic",
+              "atlassian/stakeholder",
+              "atlassian/site-admin",
+              "atlassian/org-admin"
+            ]
+          },
+          "resource": {
+            "type": "string",
+            "description": "Workspace ARI. Required by the vendor for all roles other than org-admin; ignored for org-admin.",
+            "example": "ari:cloud:platform::site/70ef3a32-d0da-4e09-b35e-0109f91969c3"
+          }
+        }
+      },
+      "AddUserToGroupRequest": {
+        "type": "object",
+        "required": [
+          "accountId"
+        ],
+        "properties": {
+          "accountId": {
+            "type": "string"
+          }
+        }
+      },
+      "APIToken": {
+        "type": "object",
+        "description": "client.go: APIToken. Vendor ApiToken requires id, label, status, createdAt, user.",
+        "required": [
+          "id",
+          "label",
+          "status",
+          "createdAt",
+          "user"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ALLOWED",
+              "BLOCKED"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "lastActiveAt": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "user": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "email"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "orgId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "APITokenResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "links"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/APIToken"
+            }
+          },
+          "links": {
+            "$ref": "#/components/schemas/LinkPageCursor"
+          }
+        }
+      },
+      "SCIMEmail": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "primary": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SCIMName": {
+        "type": "object",
+        "properties": {
+          "givenName": {
+            "type": "string"
+          },
+          "familyName": {
+            "type": "string"
+          }
+        }
+      },
+      "SCIMCreateUserRequest": {
+        "type": "object",
+        "description": "client.go: SCIMCreateUserRequest. Vendor ScimUser has no formal `required` array, but its field descriptions state userName and emails are required during creation.",
+        "required": [
+          "userName",
+          "emails"
+        ],
+        "properties": {
+          "userName": {
+            "type": "string"
+          },
+          "emails": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SCIMEmail"
+            }
+          },
+          "name": {
+            "$ref": "#/components/schemas/SCIMName"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SCIMUserResponse": {
+        "type": "object",
+        "description": "client.go: SCIMUserResponse. Extension key is the literal SCIM extension URN.",
+        "properties": {
+          "schemas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "userName": {
+            "type": "string"
+          },
+          "emails": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SCIMEmail"
+            }
+          },
+          "name": {
+            "$ref": "#/components/schemas/SCIMName"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "urn:scim:schemas:extension:atlassian-external:1.0": {
+            "type": "object",
+            "properties": {
+              "atlassianAccountId": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "AtlassianAPIError": {
+        "type": "object",
+        "description": "helper.go/model.go: APIError, the generic envelope the connector unmarshals every error response into (doRequest -> uhttp.WithErrorResponse(&apiErr)). It is a superset covering the shapes used across all three base URLs: the directory endpoints return {\"errors\":[...]}, the org-routing layer returns a flat body whose reason is in \"message\", and the user-management lifecycle API returns {\"key\":...,\"errorDetail\":...}. Used here only where the vendor spec does not give a narrower, operation-specific error schema.",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "description": "Vendor docs type this as a string, but model.go decodes it as json.Number because the API has been observed sending a bare numeric status on some error responses; json.Number tolerates either."
+                },
+                "code": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "detail": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "message": {
+            "type": "string",
+            "description": "Flat org-routing-layer error reason (json tag \"message\")."
+          },
+          "key": {
+            "type": "string",
+            "description": "Lifecycle-API error key, e.g. accountNotFound, notFound, conflict.lifecycleErrors."
+          },
+          "errorDetail": {
+            "type": "string"
+          },
+          "context": {
+            "description": "A string on lifecycle 403/404, an object with \"message\" on lifecycle 409."
+          }
+        }
+      },
+      "AdminErrors": {
+        "type": "object",
+        "description": "Vendor org.json component schema `Errors` (used verbatim by getDirectoryUsers, getGroups, getGroup, getUserRoleAssignments, getGroupRoleAssignments).",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "detail": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "AdminApplicationErrorsEnvelope": {
+        "type": "object",
+        "description": "Vendor org.json component schema `Errors.ApplicationErrors.Model`, used by assignRole/revokeRole 400/403/404/409.",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "code": {
+                  "type": "string",
+                  "description": "ADMIN-UAM-* application error code. ADMIN-UAM-409-2 = Resource Conflicts (helper.go codeAlreadyMember); ADMIN-UAM-409-3 = Product License Limit Exceeded."
+                },
+                "title": {
+                  "type": "string"
+                },
+                "detail": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "AdminApplicationError": {
+        "type": "object",
+        "description": "Vendor org.json component schema `ApplicationError` (singular, not wrapped in an errors[] envelope). Used by queryWorkspacesV2 400/403/404/500.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "description": "ADMIN-* application error code."
+          },
+          "title": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminProxyError": {
+        "type": "object",
+        "description": "Vendor org.json component schema `ProxyError`, used for 401/429 on assignRole/revokeRole/queryWorkspacesV2.",
+        "properties": {
+          "code": {
+            "type": "number",
+            "description": "HTTP status code."
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminApiErrorResponse": {
+        "type": "object",
+        "description": "Vendor org.json component schema `ApiErrorResponse` (wraps `ApiError`), used for 500 on assignRole/revokeRole.",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "code": {
+                  "type": "string",
+                  "description": "ADMIN-UAM-* error code."
+                },
+                "status": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "detail": {
+                  "type": "string",
+                  "nullable": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "LifecycleResultMessage": {
+        "type": "object",
+        "description": "Vendor um.json response `SuccessfulWithMessage` (deleteUser 200).",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Success"
+          }
+        }
+      },
+      "LifecycleUnauthorized": {
+        "type": "object",
+        "description": "Vendor um.json response `Unauthorized` (deleteUser 401).",
+        "required": [
+          "key"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "unauthorized"
+            ]
+          }
+        }
+      },
+      "LifecycleForbiddenBasic": {
+        "type": "object",
+        "required": [
+          "key"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "forbidden"
+            ]
+          }
+        }
+      },
+      "LifecycleForbiddenAction": {
+        "type": "object",
+        "required": [
+          "key",
+          "context"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "forbidden.action"
+            ]
+          },
+          "context": {
+            "type": "object",
+            "description": "Vendor Manageability.Unallowed; fields not declared by model.go (connector reads `context` as a raw/opaque value via json.RawMessage)."
+          }
+        }
+      },
+      "LifecycleForbiddenTargetUnverified": {
+        "type": "object",
+        "required": [
+          "key"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "forbidden.targetUnverified"
+            ]
+          }
+        }
+      },
+      "LifecycleForbidden": {
+        "description": "Vendor um.json response `Forbidden.Action` (deleteUser 403): discriminated union on `key`.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/LifecycleForbiddenBasic"
+          },
+          {
+            "$ref": "#/components/schemas/LifecycleForbiddenAction"
+          },
+          {
+            "$ref": "#/components/schemas/LifecycleForbiddenTargetUnverified"
+          }
+        ]
+      },
+      "LifecycleNotFoundAccount": {
+        "type": "object",
+        "description": "Vendor um.json response `NotFound.Account` (deleteUser 404). model.go IsAccountNotFound checks key == \"accountNotFound\"; the other documented key, \"notFound\", is not account-specific and propagates as a failure.",
+        "required": [
+          "key"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "accountNotFound",
+              "notFound"
+            ],
+            "description": "accountNotFound: requested accountId not found. notFound: requested resource not found."
+          }
+        }
+      },
+      "LifecycleConflict": {
+        "type": "object",
+        "description": "Vendor um.json response `Conflict.LifecycleError` (deleteUser 409).",
+        "required": [
+          "key",
+          "context"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "conflict.lifecycleErrors"
+            ]
+          },
+          "context": {
+            "type": "object",
+            "required": [
+              "message",
+              "accountId",
+              "errorCodes"
+            ],
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "accountId": {
+                "type": "string",
+                "description": "Vendor AccountId pattern: [a-zA-Z0-9_|:-]{1,128}."
+              },
+              "errorCodes": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "code"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "link": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "ScimError": {
+        "type": "object",
+        "description": "Vendor up.json component schema `ScimError` (createUser 400/404/409).",
+        "properties": {
+          "schemas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "scimType": {
+            "type": "string",
+            "enum": [
+              "invalidFilter",
+              "tooMany",
+              "uniqueness",
+              "mutability",
+              "invalidSyntax",
+              "invalidPath",
+              "noTarget",
+              "invalidValue",
+              "invalidVers",
+              "sensitive"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      },
+      "ScimFailure": {
+        "type": "object",
+        "description": "Vendor up.json component schema `Failure` (createUser 401/403).",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "traceId": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

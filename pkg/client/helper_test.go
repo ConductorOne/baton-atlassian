@@ -27,6 +27,16 @@ func TestAPIErrorMessage(t *testing.T) {
 			want: "API error response detail: TCS validation failed",
 		},
 		{
+			name: "lifecycle envelope keeps the errorDetail",
+			body: `{"key":"accountNotFound","context":"Error: User account not found","errorKey":"account-not-found","errorDetail":"Error: User account not found"}`,
+			want: "API error response detail: Error: User account not found",
+		},
+		{
+			name: "lifecycle conflict keeps the context message",
+			body: `{"key":"conflict.lifecycleErrors","context":{"message":"Account is not eligible","accountId":"a","errorCodes":[{"code":"x"}]}}`,
+			want: "API error response detail: Account is not eligible",
+		},
+		{
 			name: "empty body",
 			body: `{}`,
 			want: "Error response empty",

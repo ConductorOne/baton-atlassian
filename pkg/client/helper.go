@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -47,6 +48,15 @@ func (er *APIError) Message() string {
 	if er.Msg != "" {
 		return fmt.Sprintf("API error response detail: %s", er.Msg)
 	}
+	if er.ErrorDetail != "" {
+		return fmt.Sprintf("API error response detail: %s", er.ErrorDetail)
+	}
+	var conflict struct {
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(er.Context, &conflict) == nil && conflict.Message != "" {
+		return fmt.Sprintf("API error response detail: %s", conflict.Message)
+	}
 	return "Error response empty"
 }
 
@@ -90,6 +100,19 @@ func IsAlreadyMember(err error) bool {
 	}
 	body, ok := apiErrorFrom(err)
 	return ok && body.FirstCode() == codeAlreadyMember
+}
+
+// keyAccountNotFound is the lifecycle API's 404 key for an unknown accountId; the other documented
+// 404 key, "notFound", is not account-specific and propagates. Per the user-management OpenAPI
+// NotFound.Account schema.
+const keyAccountNotFound = "accountNotFound"
+
+func IsAccountNotFound(err error) bool {
+	if status.Code(err) != codes.NotFound {
+		return false
+	}
+	body, ok := apiErrorFrom(err)
+	return ok && body.Key == keyAccountNotFound
 }
 
 func IsConflict(err error) bool {
