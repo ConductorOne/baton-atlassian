@@ -94,3 +94,31 @@ func TestSCIMUserToUserUsesAtlassianAccountID(t *testing.T) {
 		t.Errorf("AccountId = %q, want %q", got, testAccountID)
 	}
 }
+
+func TestParseIntoUserResourceStatus(t *testing.T) {
+	cases := []struct {
+		status string
+		want   v2.Status_ResourceStatus
+	}{
+		{statusActive, v2.Status_RESOURCE_STATUS_ENABLED},
+		{statusSuspended, v2.Status_RESOURCE_STATUS_DISABLED},
+		{statusNotInvited, v2.Status_RESOURCE_STATUS_DISABLED},
+		{statusDeactivated, v2.Status_RESOURCE_STATUS_DISABLED},
+		{statusForDeletion, v2.Status_RESOURCE_STATUS_DISABLED},
+		{"unknown", v2.Status_RESOURCE_STATUS_UNSPECIFIED},
+	}
+	for _, tc := range cases {
+		t.Run(tc.status, func(t *testing.T) {
+			r, err := parseIntoUserResource(client.User{AccountId: testAccountID, Status: tc.status})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := r.GetStatus().GetStatus(); got != tc.want {
+				t.Errorf("status = %v, want %v", got, tc.want)
+			}
+			if got := r.GetStatus().GetDetails(); got != tc.status {
+				t.Errorf("details = %q, want %q", got, tc.status)
+			}
+		})
+	}
+}

@@ -17,8 +17,11 @@ import (
 )
 
 const (
-	statusActive    = "active"
-	statusSuspended = "suspended"
+	statusActive      = "active"
+	statusSuspended   = "suspended"
+	statusNotInvited  = "not_invited"
+	statusDeactivated = "deactivated"
+	statusForDeletion = "for_deletion"
 )
 
 type userBuilder struct {
@@ -145,7 +148,7 @@ func (b *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 }
 
 func parseIntoUserResource(user client.User) (*v2.Resource, error) {
-	var userStatus = v2.UserTrait_Status_STATUS_UNSPECIFIED
+	var userStatus = v2.Status_RESOURCE_STATUS_UNSPECIFIED
 
 	profile := map[string]interface{}{
 		"account_id":     user.AccountId,
@@ -156,9 +159,10 @@ func parseIntoUserResource(user client.User) (*v2.Resource, error) {
 
 	switch user.Status {
 	case statusActive:
-		userStatus = v2.UserTrait_Status_STATUS_ENABLED
-	case statusSuspended:
-		userStatus = v2.UserTrait_Status_STATUS_DISABLED
+		userStatus = v2.Status_RESOURCE_STATUS_ENABLED
+	// for_deletion is DISABLED, not DELETED: the account stays restorable during Atlassian's 14-day grace period.
+	case statusSuspended, statusNotInvited, statusDeactivated, statusForDeletion:
+		userStatus = v2.Status_RESOURCE_STATUS_DISABLED
 	}
 
 	userTraits := []resource.UserTraitOption{
@@ -172,7 +176,7 @@ func parseIntoUserResource(user client.User) (*v2.Resource, error) {
 		user.AccountId,
 		userTraits,
 		resource.WithResourceProfile(profile),
-		resource.WithResourceStatus(v2.Status_ResourceStatus(userStatus), ""),
+		resource.WithResourceStatus(userStatus, user.Status),
 	)
 }
 
