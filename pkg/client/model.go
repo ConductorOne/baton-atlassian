@@ -15,12 +15,17 @@ type APIErrorDetail struct {
 	Detail string      `json:"detail"`
 }
 
-// APIError models both of Atlassian's error envelopes: the directory endpoints return
-// {"errors":[...]}, the org-routing layer returns a flat body whose reason is in "message".
-// Reading the second's message keeps the failure reason instead of "Error response empty".
+// APIError models Atlassian's error envelopes: the directory endpoints return
+// {"errors":[...]}, the org-routing layer returns a flat body whose reason is in "message",
+// and the user-management lifecycle API returns {"key":...,"errorDetail":...}.
+// Reading each reason keeps it instead of "Error response empty".
 type APIError struct {
-	Errors []APIErrorDetail `json:"errors"`
-	Msg    string           `json:"message"`
+	Errors      []APIErrorDetail `json:"errors"`
+	Msg         string           `json:"message"`
+	Key         string           `json:"key"`
+	ErrorDetail string           `json:"errorDetail"`
+	// Context is a string on lifecycle 403/404 and an object with "message" on 409.
+	Context json.RawMessage `json:"context"`
 }
 
 type UserResponse struct {
@@ -167,6 +172,9 @@ type SCIMUserResponse struct {
 	Name        SCIMName    `json:"name"`
 	DisplayName string      `json:"displayName"`
 	Active      bool        `json:"active"`
+	Extension   struct {
+		AtlassianAccountID string `json:"atlassianAccountId"`
+	} `json:"urn:scim:schemas:extension:atlassian-external:1.0"`
 }
 
 type OrganizationResponse struct {

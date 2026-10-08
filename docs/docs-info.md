@@ -25,6 +25,7 @@
   Customer must consider that depending on their settings not all roles may be available for all sites. There are some of them that could be enabled or not on certain sites; there may be other roles that can be only configured if the user meets certain requirements.
   The connector is unable to determine which will be effectively available, but a descriptive error message should communicate the situation when a Grant can't be provisioned.
 - This connector can also provision Group Memberships, meaning that you can Grant or Revoke a user's membership in a group.
+- This connector can also deprovision managed accounts (accounts on a verified domain): deleting a user deletes their Atlassian account across every product, after Atlassian's 14-day grace period.
 
 ## Connector credentials
 
