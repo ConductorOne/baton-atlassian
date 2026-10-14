@@ -23,6 +23,10 @@ The Atlassian connector supports [automatic account provisioning](/product/admin
 
 The connector also supports account deprovisioning. When C1 deprovisions a user, the connector deletes their Atlassian account, which removes their access to every Atlassian product in the organization. Atlassian keeps the account deactivated for a 14-day grace period before the deletion is permanent. Deprovisioning only works for managed accounts (accounts on a domain your organization has verified) and uses the organization API key.
 
+During the 14-day grace period, the deleted account stays on the app's **Accounts** tab in C1 with the status **For Deletion**; it is not removed until Atlassian finishes the deletion. Atlassian can take several minutes to report the new status, so the first syncs after a successful deprovision may still show the account as active.
+
+If you deprovision an account that is not managed by your organization, Atlassian rejects the request with `403 Forbidden: Caller must be a verified org admin of targeted account or be the targeted account`, and C1 falls back to manual deprovisioning.
+
 ### Connector actions
 
 Connector actions are custom capabilities that extend C1 automations with app-specific operations. You can use connector actions in the [Perform connector action](/product/admin/automations-steps-reference#perform-connector-action) automation step.
