@@ -97,19 +97,43 @@ func TestSCIMUserToUserUsesAtlassianAccountID(t *testing.T) {
 
 func TestParseIntoUserResourceStatus(t *testing.T) {
 	cases := []struct {
-		status string
-		want   v2.Status_ResourceStatus
+		name             string
+		status           string
+		accountStatus    string
+		membershipStatus string
+		want             v2.Status_ResourceStatus
 	}{
-		{statusActive, v2.Status_RESOURCE_STATUS_ENABLED},
-		{statusSuspended, v2.Status_RESOURCE_STATUS_DISABLED},
-		{statusNotInvited, v2.Status_RESOURCE_STATUS_DISABLED},
-		{statusDeactivated, v2.Status_RESOURCE_STATUS_DISABLED},
-		{statusForDeletion, v2.Status_RESOURCE_STATUS_DISABLED},
-		{"unknown", v2.Status_RESOURCE_STATUS_UNSPECIFIED},
+		// Known composite values win, even when the sub-statuses disagree.
+		{name: "active", status: statusActive, accountStatus: "active", membershipStatus: "active", want: v2.Status_RESOURCE_STATUS_ENABLED},
+		{name: "suspended", status: statusSuspended, accountStatus: "active", membershipStatus: "suspended", want: v2.Status_RESOURCE_STATUS_DISABLED},
+		{name: "not_invited", status: statusNotInvited, accountStatus: "active", membershipStatus: "no_membership", want: v2.Status_RESOURCE_STATUS_DISABLED},
+		{name: "deactivated", status: statusDeactivated, accountStatus: "inactive", membershipStatus: "active", want: v2.Status_RESOURCE_STATUS_DISABLED},
+		{name: "for_deletion", status: statusForDeletion, accountStatus: "active", membershipStatus: "active", want: v2.Status_RESOURCE_STATUS_DISABLED},
+		{name: "known status without sub-statuses", status: statusActive, want: v2.Status_RESOURCE_STATUS_ENABLED},
+
+		// Unknown composite value: classify from the sub-statuses.
+		{name: "unknown, both active", status: "unknown", accountStatus: "active", membershipStatus: "active", want: v2.Status_RESOURCE_STATUS_ENABLED},
+		{name: "unknown, account closed", status: "unknown", accountStatus: "closed", membershipStatus: "active", want: v2.Status_RESOURCE_STATUS_DISABLED},
+		{name: "unknown, account inactive", status: "unknown", accountStatus: "inactive", membershipStatus: "active", want: v2.Status_RESOURCE_STATUS_DISABLED},
+		{name: "unknown, membership suspended", status: "unknown", accountStatus: "active", membershipStatus: "suspended", want: v2.Status_RESOURCE_STATUS_DISABLED},
+		{name: "unknown, no membership", status: "unknown", accountStatus: "active", membershipStatus: "no_membership", want: v2.Status_RESOURCE_STATUS_DISABLED},
+		{name: "unknown, unrecognised sub-status", status: "unknown", accountStatus: "active", membershipStatus: "pending", want: v2.Status_RESOURCE_STATUS_DISABLED},
+		{name: "unknown, account status missing", status: "unknown", membershipStatus: "suspended", want: v2.Status_RESOURCE_STATUS_UNSPECIFIED},
+		{name: "unknown, membership status missing", status: "unknown", accountStatus: "closed", want: v2.Status_RESOURCE_STATUS_UNSPECIFIED},
+		{name: "unknown, no sub-statuses", status: "unknown", want: v2.Status_RESOURCE_STATUS_UNSPECIFIED},
+
+		// Status missing entirely.
+		{name: "empty status, both active", accountStatus: "active", membershipStatus: "active", want: v2.Status_RESOURCE_STATUS_ENABLED},
+		{name: "empty input", want: v2.Status_RESOURCE_STATUS_UNSPECIFIED},
 	}
 	for _, tc := range cases {
-		t.Run(tc.status, func(t *testing.T) {
-			r, err := parseIntoUserResource(client.User{AccountId: testAccountID, Status: tc.status})
+		t.Run(tc.name, func(t *testing.T) {
+			r, err := parseIntoUserResource(client.User{
+				AccountId:        testAccountID,
+				Status:           tc.status,
+				AccountStatus:    tc.accountStatus,
+				MembershipStatus: tc.membershipStatus,
+			})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -118,6 +142,17 @@ func TestParseIntoUserResourceStatus(t *testing.T) {
 			}
 			if got := r.GetStatus().GetDetails(); got != tc.status {
 				t.Errorf("details = %q, want %q", got, tc.status)
+			}
+
+			profile := r.GetProfile().AsMap()
+			for key, want := range map[string]string{
+				"status":            tc.status,
+				"account_status":    tc.accountStatus,
+				"membership_status": tc.membershipStatus,
+			} {
+				if got := profile[key]; got != want {
+					t.Errorf("profile[%q] = %v, want %q", key, got, want)
+				}
 			}
 		})
 	}

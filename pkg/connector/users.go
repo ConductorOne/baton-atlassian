@@ -147,23 +147,47 @@ func (b *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 	return grantResources, nextPageToken, nil, nil
 }
 
-func parseIntoUserResource(user client.User) (*v2.Resource, error) {
-	var userStatus = v2.Status_RESOURCE_STATUS_UNSPECIFIED
-
-	profile := map[string]interface{}{
-		"account_id":     user.AccountId,
-		"account_type":   user.AccountType,
-		"username":       user.Name,
-		"email_verified": user.EmailVerified,
-	}
-
+// mapOrgUserStatus maps an org directory user to a resource status.
+//
+// The composite "status" field is authoritative. Only "active" is enabled; every other
+// documented value means the user cannot use the site. "for_deletion" is DISABLED rather
+// than DELETED because the account can still be restored during Atlassian's grace period.
+//
+// If "status" holds a value this connector does not know, the user is classified from
+// "accountStatus" and "membershipStatus" instead: an account that is not active (e.g.
+// "inactive" or "closed") or a membership that is not active (e.g. "suspended" or
+// "no_membership") is DISABLED, and active on both is ENABLED. Anything still
+// unrecognised stays UNSPECIFIED rather than guessing.
+func mapOrgUserStatus(user client.User) v2.Status_ResourceStatus {
 	switch user.Status {
 	case statusActive:
-		userStatus = v2.Status_RESOURCE_STATUS_ENABLED
-	// for_deletion is DISABLED, not DELETED: the account stays restorable during Atlassian's 14-day grace period.
+		return v2.Status_RESOURCE_STATUS_ENABLED
 	case statusSuspended, statusNotInvited, statusDeactivated, statusForDeletion:
-		userStatus = v2.Status_RESOURCE_STATUS_DISABLED
+		return v2.Status_RESOURCE_STATUS_DISABLED
 	}
+
+	switch {
+	case user.AccountStatus == "" || user.MembershipStatus == "":
+		return v2.Status_RESOURCE_STATUS_UNSPECIFIED
+	case user.AccountStatus != statusActive || user.MembershipStatus != statusActive:
+		return v2.Status_RESOURCE_STATUS_DISABLED
+	default:
+		return v2.Status_RESOURCE_STATUS_ENABLED
+	}
+}
+
+func parseIntoUserResource(user client.User) (*v2.Resource, error) {
+	profile := map[string]interface{}{
+		"account_id":        user.AccountId,
+		"account_type":      user.AccountType,
+		"username":          user.Name,
+		"email_verified":    user.EmailVerified,
+		"status":            user.Status,
+		"account_status":    user.AccountStatus,
+		"membership_status": user.MembershipStatus,
+	}
+
+	userStatus := mapOrgUserStatus(user)
 
 	userTraits := []resource.UserTraitOption{
 		resource.WithUserLogin(user.Email),
