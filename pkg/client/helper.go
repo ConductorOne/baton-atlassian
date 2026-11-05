@@ -48,8 +48,15 @@ func (er *APIError) Message() string {
 	if er.Msg != "" {
 		return fmt.Sprintf("API error response detail: %s", er.Msg)
 	}
-	if er.ErrorDetail != "" {
-		return fmt.Sprintf("API error response detail: %s", er.ErrorDetail)
+	var detail string
+	if json.Unmarshal(er.ErrorDetail, &detail) == nil && detail != "" {
+		return fmt.Sprintf("API error response detail: %s", detail)
+	}
+	var detailObject struct {
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(er.ErrorDetail, &detailObject) == nil && detailObject.Message != "" {
+		return fmt.Sprintf("API error response detail: %s", detailObject.Message)
 	}
 	var conflict struct {
 		Message string `json:"message"`

@@ -10,6 +10,7 @@ sidebarTitle: "Atlassian"
 
 | Resource | Sync | Provision | Delete |
 | :--- | :--- | :--- | :--- |
+| Organization | <Icon icon="square-check" iconType="solid"  color="#c937ae"/> |  |  |
 | Accounts | <Icon icon="square-check" iconType="solid"  color="#c937ae"/> | <Icon icon="square-check" iconType="solid"  color="#c937ae"/> | <Icon icon="square-check" iconType="solid"  color="#c937ae"/> |
 | Workspaces | <Icon icon="square-check" iconType="solid"  color="#c937ae"/> | <Icon icon="square-check" iconType="solid"  color="#c937ae"/> |  |
 | Groups | <Icon icon="square-check" iconType="solid"  color="#c937ae"/> | <Icon icon="square-check" iconType="solid"  color="#c937ae"/> |  |
@@ -43,12 +44,20 @@ If Atlassian reports any other status, C1 marks the account Enabled only when bo
 
 ### Connector actions
 
-Connector actions are custom capabilities that extend C1 automations with app-specific operations. You can use connector actions in the [Perform connector action](/product/admin/automations-steps-reference#perform-connector-action) automation step.
+Connector actions are custom capabilities that extend C1 automations with app-specific operations.
+
+| Automation step | Actions offered | How the target is selected |
+|-----------------|-----------------|----------------------------|
+| Account lifecycle action | `enable_user`, `disable_user`, `activate_user`, `deactivate_user` | The step's own target-account selector — either the account in context or a specific account. C1 resolves `user_id` from that account. |
 
 | Action name | Additional fields | Description |
 |-------------|-------------------|-------------|
 | enable_user | `user_id` (string, required) | Restore an Atlassian user's access to the organization |
 | disable_user     | `user_id` (string, required) | Suspend an Atlassian user's access to the organization |
+| activate_user | `user_id` (string, required) | Reactivate a deactivated Atlassian account |
+| deactivate_user | `user_id` (string, required) | Deactivate a managed Atlassian account across all organizations |
+
+`disable_user` and `enable_user` suspend and restore access to this organization only. `deactivate_user` and `activate_user` act on the whole Atlassian account, blocking or restoring access to every Atlassian app in any organization. They only work for managed accounts (accounts on a domain your organization has verified). For accounts provisioned from an identity provider, Atlassian requires deactivating them in the identity provider.
 
 ## Gather Atlassian credentials
 
@@ -124,7 +133,7 @@ If you want to provision workspace roles with the connector, you must raise an A
     </Step>
     <Step>
     In the **Summarize your issue** box, enter:
-	I need access to three Atlassian Administration Cloud API endpoints. The documentation states that access should be requested from the support team.
+	I need access to two Atlassian Administration Cloud API endpoints. The documentation states that access should be requested from the support team.
     </Step>
     <Step>
     From the **What is the impact to your business?** drop-down, select **Level 3**.
@@ -136,7 +145,6 @@ If you want to provision workspace roles with the connector, you must raise an A
     I need access to the following endpoints of the Atlassian Administration Cloud API:
     * Grant User Access: https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/\#api-v1-orgs-orgid-users-userid-roles-assign-post
     * Revoke User Access: https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/\#api-v1-orgs-orgid-users-userid-roles-revoke-post
-    * Invite User to Org: https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/\#api-v1-orgs-orgid-users-invite-post
     I'm working with an API client and I need to be able to use these endpoints on my Atlassian organization.
     My organization ID is: <ATLASSIAN_ORGANIZATION_ID>
     Thanks in advance for your help!
@@ -267,8 +275,8 @@ stringData:
   BATON_CLIENT_SECRET: <C1 client secret>
 
   # Atlassian credentials
-  BATON_API_TOKEN: <Atlassian organization API access token>
-  BATON_ORG: <Atlassian org ID>
+  BATON_ACCESS_TOKEN: <Atlassian organization API access token>
+  BATON_ORGANIZATION_ID: <Atlassian org ID>
 
   # Optional: include if you want C1 to provision access using this connector
   BATON_PROVISIONING: true
