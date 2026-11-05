@@ -118,8 +118,15 @@ func TestParseIntoUserResourceStatus(t *testing.T) {
 		{name: "unknown, membership suspended", status: "unknown", accountStatus: "active", membershipStatus: "suspended", want: v2.Status_RESOURCE_STATUS_DISABLED},
 		{name: "unknown, no membership", status: "unknown", accountStatus: "active", membershipStatus: "no_membership", want: v2.Status_RESOURCE_STATUS_DISABLED},
 		{name: "unknown, unrecognised sub-status", status: "unknown", accountStatus: "active", membershipStatus: "pending", want: v2.Status_RESOURCE_STATUS_DISABLED},
-		{name: "unknown, account status missing", status: "unknown", membershipStatus: "suspended", want: v2.Status_RESOURCE_STATUS_UNSPECIFIED},
-		{name: "unknown, membership status missing", status: "unknown", accountStatus: "closed", want: v2.Status_RESOURCE_STATUS_UNSPECIFIED},
+		{name: "unknown, account inactive, membership suspended", status: "unknown", accountStatus: "inactive", membershipStatus: "suspended", want: v2.Status_RESOURCE_STATUS_DISABLED},
+
+		// One sub-status missing: a non-active one still decides; an active one cannot confirm access.
+		{name: "unknown, account missing, membership suspended", status: "unknown", membershipStatus: "suspended", want: v2.Status_RESOURCE_STATUS_DISABLED},
+		{name: "unknown, account missing, no membership", status: "unknown", membershipStatus: "no_membership", want: v2.Status_RESOURCE_STATUS_DISABLED},
+		{name: "unknown, account closed, membership missing", status: "unknown", accountStatus: "closed", want: v2.Status_RESOURCE_STATUS_DISABLED},
+		{name: "unknown, account inactive, membership missing", status: "unknown", accountStatus: "inactive", want: v2.Status_RESOURCE_STATUS_DISABLED},
+		{name: "unknown, account active, membership missing", status: "unknown", accountStatus: "active", want: v2.Status_RESOURCE_STATUS_UNSPECIFIED},
+		{name: "unknown, account missing, membership active", status: "unknown", membershipStatus: "active", want: v2.Status_RESOURCE_STATUS_UNSPECIFIED},
 		{name: "unknown, no sub-statuses", status: "unknown", want: v2.Status_RESOURCE_STATUS_UNSPECIFIED},
 
 		// Status missing entirely.
