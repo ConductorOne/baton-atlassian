@@ -32,7 +32,9 @@ const (
 	userSuspendAccessEP = "v1/orgs/%s/directory/users/%s/suspend-access"
 	userRestoreAccessEP = "v1/orgs/%s/directory/users/%s/restore-access"
 
-	userLifecycleDeleteEP = "users/%s/manage/lifecycle/delete"
+	userLifecycleDeleteEP  = "users/%s/manage/lifecycle/delete"
+	userLifecycleDisableEP = "users/%s/manage/lifecycle/disable"
+	userLifecycleEnableEP  = "users/%s/manage/lifecycle/enable"
 
 	organizationEP = "v1/orgs/%s"
 
@@ -492,6 +494,48 @@ func (c *AtlassianClient) DeleteUser(ctx context.Context, accountID string) erro
 		requestURL,
 		nil,
 		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-disable-post
+func (c *AtlassianClient) DeactivateUser(ctx context.Context, accountID string) error {
+	requestURL, err := url.JoinPath(c.getLifecycleBaseURL(), fmt.Sprintf(userLifecycleDisableEP, accountID))
+	if err != nil {
+		return err
+	}
+
+	// The disable and enable endpoints reject a POST without a JSON content type, even with no fields to send.
+	_, err = c.doRequest(ctx,
+		http.MethodPost,
+		requestURL,
+		nil,
+		struct{}{},
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-enable-post
+func (c *AtlassianClient) ActivateUser(ctx context.Context, accountID string) error {
+	requestURL, err := url.JoinPath(c.getLifecycleBaseURL(), fmt.Sprintf(userLifecycleEnableEP, accountID))
+	if err != nil {
+		return err
+	}
+
+	// The disable and enable endpoints reject a POST without a JSON content type, even with no fields to send.
+	_, err = c.doRequest(ctx,
+		http.MethodPost,
+		requestURL,
+		nil,
+		struct{}{},
 	)
 	if err != nil {
 		return err

@@ -20,10 +20,11 @@ type APIErrorDetail struct {
 // and the user-management lifecycle API returns {"key":...,"errorDetail":...}.
 // Reading each reason keeps it instead of "Error response empty".
 type APIError struct {
-	Errors      []APIErrorDetail `json:"errors"`
-	Msg         string           `json:"message"`
-	Key         string           `json:"key"`
-	ErrorDetail string           `json:"errorDetail"`
+	Errors []APIErrorDetail `json:"errors"`
+	Msg    string           `json:"message"`
+	Key    string           `json:"key"`
+	// ErrorDetail is a string on lifecycle 403/404 and an object with "message" on 400.
+	ErrorDetail json.RawMessage `json:"errorDetail"`
 	// Context is a string on lifecycle 403/404 and an object with "message" on 409.
 	Context json.RawMessage `json:"context"`
 }

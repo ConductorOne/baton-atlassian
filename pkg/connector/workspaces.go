@@ -125,7 +125,7 @@ func extractIDsFromEntitlements(entitlementID string) (string, string, error) {
 	entitlementIDSegments := strings.Split(entitlementID, ":")
 	amountOfSegments := len(entitlementIDSegments)
 	if amountOfSegments < 4 || entitlementIDSegments[0] != "workspace" || entitlementIDSegments[amountOfSegments-2] != "role" {
-		return "", "", fmt.Errorf("invalid entitlementID format: %s", entitlementID)
+		return "", "", fmt.Errorf("baton-atlassian: invalid entitlementID format: %s", entitlementID)
 	}
 
 	roleID := entitlementIDSegments[amountOfSegments-1]
