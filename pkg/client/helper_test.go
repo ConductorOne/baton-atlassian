@@ -32,6 +32,11 @@ func TestAPIErrorMessage(t *testing.T) {
 			want: "API error response detail: Error: User account not found",
 		},
 		{
+			name: "lifecycle bad request keeps the object errorDetail",
+			body: `{"key":"badRequestFormat","errorKey":"bad-request-format","errorDetail":{"message":"Invalid content type (application/octet-stream).  These are valid: application/json"}}`,
+			want: "API error response detail: Invalid content type (application/octet-stream).  These are valid: application/json",
+		},
+		{
 			name: "lifecycle conflict keeps the context message",
 			body: `{"key":"conflict.lifecycleErrors","context":{"message":"Account is not eligible","accountId":"a","errorCodes":[{"code":"x"}]}}`,
 			want: "API error response detail: Account is not eligible",
