@@ -43,7 +43,9 @@ Connector actions are custom capabilities that extend C1 automations with app-sp
 | activate_user | `user_id` (string, required) | Reactivate a deactivated Atlassian account |
 | deactivate_user | `user_id` (string, required) | Deactivate a managed Atlassian account across all organizations |
 
-`disable_user` and `enable_user` suspend and restore access to this organization only. `deactivate_user` and `activate_user` act on the whole Atlassian account, blocking or restoring access to every Atlassian app in any organization. They only work for managed accounts (accounts on a domain your organization has verified). For accounts provisioned from an identity provider, Atlassian requires deactivating them in the identity provider.
+`disable_user` and `enable_user` suspend and restore access to this organization only. `deactivate_user` and `activate_user` act on the whole Atlassian account, blocking or restoring access to every Atlassian app in any organization. They only work for managed accounts (accounts on a domain your organization has verified). For accounts provisioned from an identity provider, including accounts this connector creates through SCIM account provisioning, Atlassian requires deactivating them in the identity provider.
+
+The two pairs are independent: `activate_user` does not lift an organization suspension, and `enable_user` does not reactivate a deactivated account. To fully restore a user who may be either or both, run `activate_user` and then `enable_user`; both succeed when the account is already in the target state.
 
 ## Gather Atlassian credentials
 
