@@ -186,13 +186,21 @@ func mapOrgUserStatus(user client.User) v2.Status_ResourceStatus {
 
 func parseIntoUserResource(user client.User) (*v2.Resource, error) {
 	profile := map[string]interface{}{
-		"account_id":        user.AccountId,
+		"account_id":     user.AccountId,
+		"username":       user.Name,
+		"email_verified": user.EmailVerified,
+	}
+	// Users built from a SCIM response (account creation) lack these fields; omit
+	// them rather than publish empty values.
+	for key, value := range map[string]string{
 		"account_type":      user.AccountType,
-		"username":          user.Name,
-		"email_verified":    user.EmailVerified,
 		"status":            user.Status,
 		"account_status":    user.AccountStatus,
 		"membership_status": user.MembershipStatus,
+	} {
+		if value != "" {
+			profile[key] = value
+		}
 	}
 
 	userStatus := mapOrgUserStatus(user)
@@ -319,11 +327,13 @@ func scimUserToUser(scimUser *client.SCIMUserResponse) client.User {
 		accountID = scimUser.ID
 	}
 
+	// SCIM only reports a boolean, which maps onto the composite status. accountStatus
+	// uses a different vocabulary (active, inactive, closed) that SCIM does not give us,
+	// so it is left empty rather than derived.
 	return client.User{
 		AccountId:     accountID,
 		Status:        status,
-		AccountStatus: status,
-		Name:          scimUser.DisplayName,
+		Name:         scimUser.DisplayName,
 		Email:         email,
 		EmailVerified: true,
 	}

@@ -157,8 +157,50 @@ func TestParseIntoUserResourceStatus(t *testing.T) {
 				"account_status":    tc.accountStatus,
 				"membership_status": tc.membershipStatus,
 			} {
-				if got := profile[key]; got != want {
+				got, ok := profile[key]
+				switch {
+				case want == "" && ok:
+					t.Errorf("profile[%q] = %v, want key omitted", key, got)
+				case want != "" && got != want:
 					t.Errorf("profile[%q] = %v, want %q", key, got, want)
+				}
+			}
+		})
+	}
+}
+
+// Account creation builds the user from SCIM, which only has a boolean "active".
+// It must not invent sub-statuses or publish empty profile keys.
+func TestSCIMUserResourceProfile(t *testing.T) {
+	for _, tc := range []struct {
+		active     bool
+		wantStatus string
+		want       v2.Status_ResourceStatus
+	}{
+		{active: true, wantStatus: statusActive, want: v2.Status_RESOURCE_STATUS_ENABLED},
+		{active: false, wantStatus: statusSuspended, want: v2.Status_RESOURCE_STATUS_DISABLED},
+	} {
+		t.Run(tc.wantStatus, func(t *testing.T) {
+			user := scimUserToUser(&client.SCIMUserResponse{ID: "scim-uuid", Active: tc.active})
+			if user.AccountStatus != "" {
+				t.Errorf("AccountStatus = %q, want empty", user.AccountStatus)
+			}
+
+			r, err := parseIntoUserResource(user)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := r.GetStatus().GetStatus(); got != tc.want {
+				t.Errorf("status = %v, want %v", got, tc.want)
+			}
+
+			profile := r.GetProfile().AsMap()
+			if got := profile["status"]; got != tc.wantStatus {
+				t.Errorf("profile[status] = %v, want %q", got, tc.wantStatus)
+			}
+			for _, key := range []string{"account_type", "account_status", "membership_status"} {
+				if got, ok := profile[key]; ok {
+					t.Errorf("profile[%q] = %v, want key omitted", key, got)
 				}
 			}
 		})
