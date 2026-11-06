@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -59,10 +60,33 @@ func (er *APIError) Message() string {
 		return fmt.Sprintf("API error response detail: %s", detailObject.Message)
 	}
 	var conflict struct {
-		Message string `json:"message"`
+		Message    string `json:"message"`
+		ErrorCodes []struct {
+			Code string `json:"code"`
+		} `json:"errorCodes"`
 	}
 	if json.Unmarshal(er.Context, &conflict) == nil && conflict.Message != "" {
+		var errorCodes []string
+		for _, errorCode := range conflict.ErrorCodes {
+			if errorCode.Code != "" {
+				errorCodes = append(errorCodes, errorCode.Code)
+			}
+		}
+		if len(errorCodes) > 0 {
+			return fmt.Sprintf("API error response detail: %s (%s)", conflict.Message, strings.Join(errorCodes, ", "))
+		}
 		return fmt.Sprintf("API error response detail: %s", conflict.Message)
+	}
+	if er.Key != "" {
+		var forbidden struct {
+			Reason struct {
+				Key string `json:"key"`
+			} `json:"reason"`
+		}
+		if json.Unmarshal(er.Context, &forbidden) == nil && forbidden.Reason.Key != "" {
+			return fmt.Sprintf("API error response detail: %s (%s)", er.Key, forbidden.Reason.Key)
+		}
+		return fmt.Sprintf("API error response detail: %s", er.Key)
 	}
 	return "Error response empty"
 }
