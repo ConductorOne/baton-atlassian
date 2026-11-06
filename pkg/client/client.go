@@ -32,7 +32,9 @@ const (
 	userSuspendAccessEP = "v1/orgs/%s/directory/users/%s/suspend-access"
 	userRestoreAccessEP = "v1/orgs/%s/directory/users/%s/restore-access"
 
-	userLifecycleDeleteEP = "users/%s/manage/lifecycle/delete"
+	userLifecycleDeleteEP  = "users/%s/manage/lifecycle/delete"
+	userLifecycleDisableEP = "users/%s/manage/lifecycle/disable"
+	userLifecycleEnableEP  = "users/%s/manage/lifecycle/enable"
 
 	organizationEP = "v1/orgs/%s"
 
@@ -106,7 +108,7 @@ func (c *AtlassianClient) GetOrganizationID() string {
 // GetOrganization returns the organization details including its name.
 func (c *AtlassianClient) GetOrganization(ctx context.Context) (*Organization, error) {
 	var orgResponse OrganizationResponse
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(organizationEP, c.config.organizationID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(organizationEP, url.PathEscape(c.config.organizationID)))
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +129,7 @@ func (c *AtlassianClient) GetOrganization(ctx context.Context) (*Organization, e
 // GetGroupMembers returns a list of users that are members of a specific group.
 func (c *AtlassianClient) GetGroupMembers(ctx context.Context, pageToken, groupID string) ([]User, string, error) {
 	var usersResponse UserResponse
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(usersEP, c.config.organizationID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(usersEP, url.PathEscape(c.config.organizationID)))
 	if err != nil {
 		return nil, "", err
 	}
@@ -157,7 +159,7 @@ func (c *AtlassianClient) GetGroupMembers(ctx context.Context, pageToken, groupI
 
 func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) ([]User, string, error) {
 	var usersResponse UserResponse
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(usersEP, c.config.organizationID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(usersEP, url.PathEscape(c.config.organizationID)))
 	if err != nil {
 		return nil, "", err
 	}
@@ -187,7 +189,7 @@ func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) ([]Us
 // already uses); Forge/OAuth2 apps cannot access this resource.
 func (c *AtlassianClient) ListAPITokens(ctx context.Context, pageToken string) ([]APIToken, string, error) {
 	var tokensResponse APITokenResponse
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(apiTokensEP, c.config.organizationID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(apiTokensEP, url.PathEscape(c.config.organizationID)))
 	if err != nil {
 		return nil, "", err
 	}
@@ -214,7 +216,7 @@ func (c *AtlassianClient) ListAPITokens(ctx context.Context, pageToken string) (
 
 func (c *AtlassianClient) ListWorkspaces(ctx context.Context, pageToken string) ([]Workspace, string, error) {
 	var workspacesResponse WorkspaceResponse
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(workspacesEP, c.config.organizationID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(workspacesEP, url.PathEscape(c.config.organizationID)))
 	if err != nil {
 		return nil, "", err
 	}
@@ -242,7 +244,7 @@ func (c *AtlassianClient) ListWorkspaces(ctx context.Context, pageToken string) 
 
 func (c *AtlassianClient) ListGroups(ctx context.Context, pageToken string) ([]Group, string, error) {
 	var groupsResponse GroupResponse
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupsEP, c.config.organizationID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupsEP, url.PathEscape(c.config.organizationID)))
 	if err != nil {
 		return nil, "", err
 	}
@@ -270,7 +272,7 @@ func (c *AtlassianClient) ListGroups(ctx context.Context, pageToken string) ([]G
 func (c *AtlassianClient) GetUserRoleAssignments(ctx context.Context, pageToken, userID string) ([]RoleAssignment, string, error) {
 	var roleAssignmentsResponse RoleAssignmentsResponse
 
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(usersRoleAssignmentEP, c.config.organizationID, userID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(usersRoleAssignmentEP, url.PathEscape(c.config.organizationID), url.PathEscape(userID)))
 	if err != nil {
 		return nil, "", err
 	}
@@ -297,7 +299,7 @@ func (c *AtlassianClient) GetUserRoleAssignments(ctx context.Context, pageToken,
 func (c *AtlassianClient) GetGroupRoleAssignments(ctx context.Context, pageToken, groupID string) ([]RoleAssignment, string, error) {
 	var roleAssignmentsResponse RoleAssignmentsResponse
 
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupsRoleAssignmentEP, c.config.organizationID, groupID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupsRoleAssignmentEP, url.PathEscape(c.config.organizationID), url.PathEscape(groupID)))
 	if err != nil {
 		return nil, "", err
 	}
@@ -324,7 +326,7 @@ func (c *AtlassianClient) GetGroupRoleAssignments(ctx context.Context, pageToken
 // GetGroupDirectoryID resolves a group's directory id. GET v2/orgs/{org}/directories/-/groups/{groupID}. Requires read:groups:admin.
 func (c *AtlassianClient) GetGroupDirectoryID(ctx context.Context, groupID string) (string, error) {
 	var groupResponse GroupDetailResponse
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupDetailEP, c.config.organizationID, groupID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupDetailEP, url.PathEscape(c.config.organizationID), url.PathEscape(groupID)))
 	if err != nil {
 		return "", err
 	}
@@ -354,7 +356,7 @@ func (c *AtlassianClient) AddUserToGroup(ctx context.Context, directoryID, group
 		AccountId: accountID,
 	}
 
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupMembershipsEP, c.config.organizationID, directoryID, groupID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupMembershipsEP, url.PathEscape(c.config.organizationID), url.PathEscape(directoryID), url.PathEscape(groupID)))
 	if err != nil {
 		return err
 	}
@@ -374,7 +376,8 @@ func (c *AtlassianClient) AddUserToGroup(ctx context.Context, directoryID, group
 
 // RemoveUserFromGroup removes a user from a group. DELETE v2/orgs/{org}/directories/{directoryID}/groups/{groupID}/memberships/{accountID}. Requires an unscoped organization API key.
 func (c *AtlassianClient) RemoveUserFromGroup(ctx context.Context, directoryID, groupID, accountID string) error {
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupMembershipEP, c.config.organizationID, directoryID, groupID, accountID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupMembershipEP,
+		url.PathEscape(c.config.organizationID), url.PathEscape(directoryID), url.PathEscape(groupID), url.PathEscape(accountID)))
 	if err != nil {
 		return err
 	}
@@ -398,7 +401,7 @@ func (c *AtlassianClient) AssignRoleToUser(ctx context.Context, userID, workspac
 		Resource: workspaceID,
 	}
 
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(userAssignRolesEP, c.config.organizationID, userID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(userAssignRolesEP, url.PathEscape(c.config.organizationID), url.PathEscape(userID)))
 	if err != nil {
 		return err
 	}
@@ -422,7 +425,7 @@ func (c *AtlassianClient) RevokeRoleFromUser(ctx context.Context, userID, worksp
 		Resource: workspaceID,
 	}
 
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(userRevokeRolesEP, c.config.organizationID, userID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(userRevokeRolesEP, url.PathEscape(c.config.organizationID), url.PathEscape(userID)))
 	if err != nil {
 		return err
 	}
@@ -442,7 +445,7 @@ func (c *AtlassianClient) RevokeRoleFromUser(ctx context.Context, userID, worksp
 
 // https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-suspend-access-post
 func (c *AtlassianClient) DisableUser(ctx context.Context, accountID string) error {
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(userSuspendAccessEP, c.config.organizationID, accountID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(userSuspendAccessEP, url.PathEscape(c.config.organizationID), url.PathEscape(accountID)))
 	if err != nil {
 		return err
 	}
@@ -462,7 +465,7 @@ func (c *AtlassianClient) DisableUser(ctx context.Context, accountID string) err
 
 // https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-restore-access-post
 func (c *AtlassianClient) EnableUser(ctx context.Context, accountID string) error {
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(userRestoreAccessEP, c.config.organizationID, accountID))
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(userRestoreAccessEP, url.PathEscape(c.config.organizationID), url.PathEscape(accountID)))
 	if err != nil {
 		return err
 	}
@@ -482,7 +485,7 @@ func (c *AtlassianClient) EnableUser(ctx context.Context, accountID string) erro
 
 // https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-delete-post
 func (c *AtlassianClient) DeleteUser(ctx context.Context, accountID string) error {
-	requestURL, err := url.JoinPath(c.getLifecycleBaseURL(), fmt.Sprintf(userLifecycleDeleteEP, accountID))
+	requestURL, err := url.JoinPath(c.getLifecycleBaseURL(), fmt.Sprintf(userLifecycleDeleteEP, url.PathEscape(accountID)))
 	if err != nil {
 		return err
 	}
@@ -492,6 +495,48 @@ func (c *AtlassianClient) DeleteUser(ctx context.Context, accountID string) erro
 		requestURL,
 		nil,
 		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-disable-post
+func (c *AtlassianClient) DeactivateUser(ctx context.Context, accountID string) error {
+	requestURL, err := url.JoinPath(c.getLifecycleBaseURL(), fmt.Sprintf(userLifecycleDisableEP, url.PathEscape(accountID)))
+	if err != nil {
+		return err
+	}
+
+	// The disable and enable endpoints reject a POST without a JSON content type, even with no fields to send.
+	_, err = c.doRequest(ctx,
+		http.MethodPost,
+		requestURL,
+		nil,
+		struct{}{},
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-enable-post
+func (c *AtlassianClient) ActivateUser(ctx context.Context, accountID string) error {
+	requestURL, err := url.JoinPath(c.getLifecycleBaseURL(), fmt.Sprintf(userLifecycleEnableEP, url.PathEscape(accountID)))
+	if err != nil {
+		return err
+	}
+
+	// The disable and enable endpoints reject a POST without a JSON content type, even with no fields to send.
+	_, err = c.doRequest(ctx,
+		http.MethodPost,
+		requestURL,
+		nil,
+		struct{}{},
 	)
 	if err != nil {
 		return err

@@ -32,9 +32,34 @@ func TestAPIErrorMessage(t *testing.T) {
 			want: "API error response detail: Error: User account not found",
 		},
 		{
+			name: "lifecycle bad request keeps the object errorDetail",
+			body: `{"key":"badRequestFormat","errorKey":"bad-request-format","errorDetail":{"message":"Invalid content type (application/octet-stream).  These are valid: application/json"}}`,
+			want: "API error response detail: Invalid content type (application/octet-stream).  These are valid: application/json",
+		},
+		{
 			name: "lifecycle conflict keeps the context message",
 			body: `{"key":"conflict.lifecycleErrors","context":{"message":"Account is not eligible","accountId":"a","errorCodes":[{"code":"x"}]}}`,
+			want: "API error response detail: Account is not eligible (x)",
+		},
+		{
+			name: "lifecycle conflict lists every error code",
+			body: `{"key":"conflict.lifecycleErrors","context":{"message":"Account is not eligible","accountId":"a","errorCodes":[{"code":"x"},{"code":"y"}]}}`,
+			want: "API error response detail: Account is not eligible (x, y)",
+		},
+		{
+			name: "lifecycle conflict with empty errorCodes keeps only the message",
+			body: `{"key":"conflict.lifecycleErrors","context":{"message":"Account is not eligible","accountId":"a","errorCodes":[]}}`,
 			want: "API error response detail: Account is not eligible",
+		},
+		{
+			name: "lifecycle forbidden keeps the key and the reason key",
+			body: `{"key":"forbidden.action","context":{"allowed":false,"reason":{"key":"externalDirectory.scim"}}}`,
+			want: "API error response detail: forbidden.action (externalDirectory.scim)",
+		},
+		{
+			name: "lifecycle key-only body keeps the key",
+			body: `{"key":"forbidden.targetUnverified"}`,
+			want: "API error response detail: forbidden.targetUnverified",
 		},
 		{
 			name: "empty body",

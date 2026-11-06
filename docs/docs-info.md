@@ -6,6 +6,7 @@
   - **Users**: All users in the organization directory
   - **Groups**: All groups in the organization (e.g., org-admins, jira-admins, jira-users) with their memberships
   - **Workspaces**: Product-sites (Jira, Jira Software, Confluence, Rovo, etc.)
+  - **API Tokens**: User API tokens issued in the organization (label, creation, expiry and last-used times), linked to the user that owns each token
 
 2. What roles/grants does the connector sync?
 
@@ -26,6 +27,7 @@
   The connector is unable to determine which will be effectively available, but a descriptive error message should communicate the situation when a Grant can't be provisioned.
 - This connector can also provision Group Memberships, meaning that you can Grant or Revoke a user's membership in a group.
 - This connector can also deprovision managed accounts (accounts on a verified domain): deleting a user deletes their Atlassian account across every product, after Atlassian's 14-day grace period.
+- This connector also exposes connector actions: `disable_user`/`enable_user` suspend and restore a user's access to the organization, and `deactivate_user`/`activate_user` deactivate and reactivate a managed account across every Atlassian product.
 
 ## Connector credentials
 
@@ -65,7 +67,6 @@
              I need access to the following endpoints of the Atlassian Administration Cloud API:
              * Grant User Access: https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/\#api-v1-orgs-orgid-users-userid-roles-assign-post
              * Revoke User Access: https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/\#api-v1-orgs-orgid-users-userid-roles-revoke-post
-             * Invite User to Org: https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/\#api-v1-orgs-orgid-users-invite-post
              I'm working with an API Client and I need to be able to use these endpoints on my Atlassian Organization.
 
              My organization ID is: <ATLASSIAN_ORGANIZATION_ID>
