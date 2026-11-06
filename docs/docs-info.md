@@ -27,7 +27,7 @@
   The connector is unable to determine which will be effectively available, but a descriptive error message should communicate the situation when a Grant can't be provisioned.
 - This connector can also provision Group Memberships, meaning that you can Grant or Revoke a user's membership in a group.
 - This connector can also deprovision managed accounts (accounts on a verified domain): deleting a user deletes their Atlassian account across every product, after Atlassian's 14-day grace period.
-- This connector also exposes connector actions: `disable_user`/`enable_user` suspend and restore a user's access to the organization, and `deactivate_user`/`activate_user` deactivate and reactivate a managed account across every Atlassian product. Deprovisioning (Delete) removes the account permanently after the 14-day grace period.
+- This connector also exposes connector actions: `disable_user`/`enable_user` suspend and restore a user's access to the organization, and `deactivate_user`/`activate_user` deactivate and reactivate a managed account across every Atlassian product.
 
 ## Connector credentials
 
