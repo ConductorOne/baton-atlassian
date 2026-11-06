@@ -147,23 +147,63 @@ func (b *userBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken 
 	return grantResources, nextPageToken, nil, nil
 }
 
-func parseIntoUserResource(user client.User) (*v2.Resource, error) {
-	var userStatus = v2.Status_RESOURCE_STATUS_UNSPECIFIED
+// mapOrgUserStatus maps an org directory user to a resource status.
+//
+// The composite "status" field is authoritative. Only "active" is enabled; every other
+// documented value means the user cannot use the site. "for_deletion" is DISABLED rather
+// than DELETED because the account can still be restored during Atlassian's grace period.
+//
+// If "status" holds a value this connector does not know, the user is classified from
+// "accountStatus" and "membershipStatus" instead. Atlassian documents only "active" as
+// usable for either field: an inactive or closed account has no access to any resource,
+// and a suspended or absent membership has no access to the organization's apps.
+//
+//   - Either field present and not active (e.g. "inactive", "closed", "suspended",
+//     "no_membership"): DISABLED, whatever the other field says.
+//   - Both fields active: ENABLED.
+//   - Otherwise (both missing, or one active and the other missing): UNSPECIFIED,
+//     because access cannot be confirmed either way.
+func mapOrgUserStatus(user client.User) v2.Status_ResourceStatus {
+	switch user.Status {
+	case statusActive:
+		return v2.Status_RESOURCE_STATUS_ENABLED
+	case statusSuspended, statusNotInvited, statusDeactivated, statusForDeletion:
+		return v2.Status_RESOURCE_STATUS_DISABLED
+	}
 
+	accountInactive := user.AccountStatus != "" && user.AccountStatus != statusActive
+	membershipInactive := user.MembershipStatus != "" && user.MembershipStatus != statusActive
+
+	switch {
+	case accountInactive || membershipInactive:
+		return v2.Status_RESOURCE_STATUS_DISABLED
+	case user.AccountStatus == statusActive && user.MembershipStatus == statusActive:
+		return v2.Status_RESOURCE_STATUS_ENABLED
+	default:
+		return v2.Status_RESOURCE_STATUS_UNSPECIFIED
+	}
+}
+
+func parseIntoUserResource(user client.User) (*v2.Resource, error) {
 	profile := map[string]interface{}{
 		"account_id":     user.AccountId,
-		"account_type":   user.AccountType,
 		"username":       user.Name,
 		"email_verified": user.EmailVerified,
 	}
-
-	switch user.Status {
-	case statusActive:
-		userStatus = v2.Status_RESOURCE_STATUS_ENABLED
-	// for_deletion is DISABLED, not DELETED: the account stays restorable during Atlassian's 14-day grace period.
-	case statusSuspended, statusNotInvited, statusDeactivated, statusForDeletion:
-		userStatus = v2.Status_RESOURCE_STATUS_DISABLED
+	// Users built from a SCIM response (account creation) lack these fields; omit
+	// them rather than publish empty values.
+	for key, value := range map[string]string{
+		"account_type":      user.AccountType,
+		"status":            user.Status,
+		"account_status":    user.AccountStatus,
+		"membership_status": user.MembershipStatus,
+	} {
+		if value != "" {
+			profile[key] = value
+		}
 	}
+
+	userStatus := mapOrgUserStatus(user)
 
 	userTraits := []resource.UserTraitOption{
 		resource.WithUserLogin(user.Email),
@@ -287,11 +327,13 @@ func scimUserToUser(scimUser *client.SCIMUserResponse) client.User {
 		accountID = scimUser.ID
 	}
 
+	// SCIM only reports a boolean, which maps onto the composite status. accountStatus
+	// uses a different vocabulary (active, inactive, closed) that SCIM does not give us,
+	// so it is left empty rather than derived.
 	return client.User{
 		AccountId:     accountID,
 		Status:        status,
-		AccountStatus: status,
-		Name:          scimUser.DisplayName,
+		Name:         scimUser.DisplayName,
 		Email:         email,
 		EmailVerified: true,
 	}
