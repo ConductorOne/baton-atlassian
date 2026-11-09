@@ -25,7 +25,7 @@ type APIError struct {
 	Key    string           `json:"key"`
 	// ErrorDetail is a string on lifecycle 403/404 and an object with "message" on 400.
 	ErrorDetail json.RawMessage `json:"errorDetail"`
-	// Context is a string on lifecycle 403/404 and an object with "message" on 409.
+	// Context is an object on lifecycle 403 forbidden.action ("reason") and 409 ("message", "errorCodes"), and a string elsewhere.
 	Context json.RawMessage `json:"context"`
 }
 

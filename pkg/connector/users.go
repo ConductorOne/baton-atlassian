@@ -233,7 +233,7 @@ func (b *userBuilder) CreateAccount(ctx context.Context, accountInfo *v2.Account
 
 	scimResponse, err := b.client.CreateUser(ctx, request)
 	if err != nil {
-		return nil, nil, nil, uhttp.WrapErrors(codes.Internal, "baton-atlassian: failed to create user", err)
+		return nil, nil, nil, fmt.Errorf("baton-atlassian: failed to create user: %w", err)
 	}
 
 	user := scimUserToUser(scimResponse)
