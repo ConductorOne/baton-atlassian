@@ -342,7 +342,7 @@ func (c *AtlassianClient) GetGroupDirectoryID(ctx context.Context, groupID strin
 	}
 
 	if groupResponse.Data.DirectoryId == "" {
-		return "", status.Error(codes.Internal, "baton-atlassian: group detail response missing directory id")
+		return "", status.Error(codes.Internal, "group detail response missing directory id")
 	}
 
 	return groupResponse.Data.DirectoryId, nil

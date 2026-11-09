@@ -186,11 +186,7 @@ func (c *Connector) handleDisableUser(
 
 	l.Info("user disabled successfully", zap.String("user_id", userID))
 
-	return &structpb.Struct{
-		Fields: map[string]*structpb.Value{
-			successKey: structpb.NewBoolValue(true),
-		},
-	}, nil, nil
+	return actions.NewReturnValues(true), nil, nil
 }
 
 // handleEnableUser restores an Atlassian user's access to the organization.
@@ -217,11 +213,7 @@ func (c *Connector) handleEnableUser(
 
 	l.Info("user enabled successfully", zap.String("user_id", userID))
 
-	return &structpb.Struct{
-		Fields: map[string]*structpb.Value{
-			successKey: structpb.NewBoolValue(true),
-		},
-	}, nil, nil
+	return actions.NewReturnValues(true), nil, nil
 }
 
 // handleDeactivateUser deactivates a managed Atlassian account in every organization.
@@ -248,11 +240,7 @@ func (c *Connector) handleDeactivateUser(
 
 	l.Info("user deactivated successfully", zap.String("user_id", userID))
 
-	return &structpb.Struct{
-		Fields: map[string]*structpb.Value{
-			successKey: structpb.NewBoolValue(true),
-		},
-	}, nil, nil
+	return actions.NewReturnValues(true), nil, nil
 }
 
 // handleActivateUser reactivates a deactivated Atlassian account.
@@ -279,9 +267,5 @@ func (c *Connector) handleActivateUser(
 
 	l.Info("user activated successfully", zap.String("user_id", userID))
 
-	return &structpb.Struct{
-		Fields: map[string]*structpb.Value{
-			successKey: structpb.NewBoolValue(true),
-		},
-	}, nil, nil
+	return actions.NewReturnValues(true), nil, nil
 }

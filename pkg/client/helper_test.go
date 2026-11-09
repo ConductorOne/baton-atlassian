@@ -57,6 +57,21 @@ func TestAPIErrorMessage(t *testing.T) {
 			want: "API error response detail: forbidden.action (externalDirectory.scim)",
 		},
 		{
+			name: "lifecycle forbidden with errorDetail keeps the detail and the reason key",
+			body: `{"key":"forbidden.action","errorKey":"forbidden-action","errorDetail":"Error: Action not allowed","context":{"allowed":false,"reason":{"key":"externalDirectory.scim"}}}`,
+			want: "API error response detail: Error: Action not allowed (externalDirectory.scim)",
+		},
+		{
+			name: "object errorDetail keeps the message and the reason key",
+			body: `{"key":"forbidden.action","errorDetail":{"message":"Action not allowed on this account"},"context":{"allowed":false,"reason":{"key":"externalDirectory.scim"}}}`,
+			want: "API error response detail: Action not allowed on this account (externalDirectory.scim)",
+		},
+		{
+			name: "lifecycle conflict renders the message of each error code that has one",
+			body: `{"key":"conflict.lifecycleErrors","context":{"message":"Account is not eligible","accountId":"a","errorCodes":[{"code":"A","message":"msg"},{"code":"B"}]}}`,
+			want: "API error response detail: Account is not eligible (A: msg, B)",
+		},
+		{
 			name: "lifecycle key-only body keeps the key",
 			body: `{"key":"forbidden.targetUnverified"}`,
 			want: "API error response detail: forbidden.targetUnverified",

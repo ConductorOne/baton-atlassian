@@ -49,27 +49,41 @@ func (er *APIError) Message() string {
 	if er.Msg != "" {
 		return fmt.Sprintf("API error response detail: %s", er.Msg)
 	}
+	var forbidden struct {
+		Reason struct {
+			Key string `json:"key"`
+		} `json:"reason"`
+	}
+	var reasonSuffix string
+	if json.Unmarshal(er.Context, &forbidden) == nil && forbidden.Reason.Key != "" {
+		reasonSuffix = fmt.Sprintf(" (%s)", forbidden.Reason.Key)
+	}
 	var detail string
 	if json.Unmarshal(er.ErrorDetail, &detail) == nil && detail != "" {
-		return fmt.Sprintf("API error response detail: %s", detail)
+		return fmt.Sprintf("API error response detail: %s%s", detail, reasonSuffix)
 	}
 	var detailObject struct {
 		Message string `json:"message"`
 	}
 	if json.Unmarshal(er.ErrorDetail, &detailObject) == nil && detailObject.Message != "" {
-		return fmt.Sprintf("API error response detail: %s", detailObject.Message)
+		return fmt.Sprintf("API error response detail: %s%s", detailObject.Message, reasonSuffix)
 	}
 	var conflict struct {
 		Message    string `json:"message"`
 		ErrorCodes []struct {
-			Code string `json:"code"`
+			Code    string `json:"code"`
+			Message string `json:"message"`
 		} `json:"errorCodes"`
 	}
 	if json.Unmarshal(er.Context, &conflict) == nil && conflict.Message != "" {
 		var errorCodes []string
 		for _, errorCode := range conflict.ErrorCodes {
 			if errorCode.Code != "" {
-				errorCodes = append(errorCodes, errorCode.Code)
+				entry := errorCode.Code
+				if errorCode.Message != "" {
+					entry = fmt.Sprintf("%s: %s", errorCode.Code, errorCode.Message)
+				}
+				errorCodes = append(errorCodes, entry)
 			}
 		}
 		if len(errorCodes) > 0 {
@@ -78,15 +92,7 @@ func (er *APIError) Message() string {
 		return fmt.Sprintf("API error response detail: %s", conflict.Message)
 	}
 	if er.Key != "" {
-		var forbidden struct {
-			Reason struct {
-				Key string `json:"key"`
-			} `json:"reason"`
-		}
-		if json.Unmarshal(er.Context, &forbidden) == nil && forbidden.Reason.Key != "" {
-			return fmt.Sprintf("API error response detail: %s (%s)", er.Key, forbidden.Reason.Key)
-		}
-		return fmt.Sprintf("API error response detail: %s", er.Key)
+		return fmt.Sprintf("API error response detail: %s%s", er.Key, reasonSuffix)
 	}
 	return "Error response empty"
 }

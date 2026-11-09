@@ -1381,7 +1381,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:397",
+          "client": "pkg/client/client.go:398",
           "evidence": "vendor spec"
         }
       }
@@ -1516,7 +1516,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:421",
+          "client": "pkg/client/client.go:422",
           "evidence": "vendor spec"
         }
       }
@@ -1605,7 +1605,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-suspend-access-post",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:446",
+          "client": "pkg/client/client.go:447",
           "evidence": "client code only"
         }
       }
@@ -1684,7 +1684,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-restore-access-post",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:466",
+          "client": "pkg/client/client.go:467",
           "evidence": "client code only"
         }
       }
@@ -1771,7 +1771,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-management/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:486",
+          "client": "pkg/client/client.go:487",
           "evidence": "vendor spec"
         }
       }
@@ -1878,7 +1878,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-disable-post",
           "accessed": "2026-11-05",
-          "client": "pkg/client/client.go:506",
+          "client": "pkg/client/client.go:507",
           "evidence": "docs + live response (204, 400); 401/403/404/409 bodies modeled on deleteUser"
         }
       }
@@ -1979,7 +1979,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-enable-post",
           "accessed": "2026-11-05",
-          "client": "pkg/client/client.go:527",
+          "client": "pkg/client/client.go:528",
           "evidence": "docs + live response (204, 400); 401/403/404/409 bodies modeled on deleteUser"
         }
       }
@@ -2081,7 +2081,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-provisioning/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:548",
+          "client": "pkg/client/client.go:549",
           "evidence": "vendor spec"
         }
       }
@@ -2816,7 +2816,7 @@
             ]
           },
           "context": {
-            "description": "A string on lifecycle 403/404, an object with \"message\" on lifecycle 409."
+            "description": "An object on lifecycle 403 forbidden.action (\"reason\") and 409 (\"message\", \"errorCodes\"); a string elsewhere."
           }
         }
       },
