@@ -72,6 +72,26 @@ func TestAPIErrorMessage(t *testing.T) {
 			want: "API error response detail: Account is not eligible (A: msg, B)",
 		},
 		{
+			name: "lifecycle conflict with errorDetail keeps the detail and the error codes",
+			body: `{"key":"conflict.lifecycleErrors","errorDetail":"Error: Lifecycle errors","context":{"message":"Not eligible","accountId":"a","errorCodes":[{"code":"A","message":"msg"}]}}`,
+			want: "API error response detail: Error: Lifecycle errors (A: msg)",
+		},
+		{
+			name: "lifecycle conflict with empty message keeps the key and the error codes",
+			body: `{"key":"conflict.lifecycleErrors","context":{"message":"","accountId":"a","errorCodes":[{"code":"A"}]}}`,
+			want: "API error response detail: conflict.lifecycleErrors (A)",
+		},
+		{
+			name: "SCIM error keeps the detail",
+			body: `{"schemas":["urn:ietf:params:scim:api:messages:2.0:Error"],"status":"404","detail":"Directory does not exist"}`,
+			want: "API error response detail: Directory does not exist",
+		},
+		{
+			name: "SCIM failure keeps the error",
+			body: `{"error":"Invalid token"}`,
+			want: "API error response detail: Invalid token",
+		},
+		{
 			name: "lifecycle key-only body keeps the key",
 			body: `{"key":"forbidden.targetUnverified"}`,
 			want: "API error response detail: forbidden.targetUnverified",

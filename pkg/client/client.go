@@ -503,6 +503,7 @@ func (c *AtlassianClient) DeleteUser(ctx context.Context, accountID string) erro
 	return nil
 }
 
+// DeactivateUser deactivates a managed account across every Atlassian organization. Requires an unscoped organization API key.
 // https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-disable-post
 func (c *AtlassianClient) DeactivateUser(ctx context.Context, accountID string) error {
 	requestURL, err := url.JoinPath(c.getLifecycleBaseURL(), fmt.Sprintf(userLifecycleDisableEP, url.PathEscape(accountID)))
@@ -524,6 +525,7 @@ func (c *AtlassianClient) DeactivateUser(ctx context.Context, accountID string) 
 	return nil
 }
 
+// ActivateUser reactivates a deactivated managed account across every Atlassian organization. Requires an unscoped organization API key.
 // https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-enable-post
 func (c *AtlassianClient) ActivateUser(ctx context.Context, accountID string) error {
 	requestURL, err := url.JoinPath(c.getLifecycleBaseURL(), fmt.Sprintf(userLifecycleEnableEP, url.PathEscape(accountID)))
