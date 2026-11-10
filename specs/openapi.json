@@ -2765,7 +2765,7 @@
       },
       "AtlassianAPIError": {
         "type": "object",
-        "description": "helper.go/model.go: APIError, the generic envelope the connector unmarshals every error response into (doRequest -> uhttp.WithErrorResponse(&apiErr)). It is a superset covering the shapes used across all three base URLs: the directory endpoints return {\"errors\":[...]}, the org-routing layer returns a flat body whose reason is in \"message\", and the user-management lifecycle API returns {\"key\":...,\"errorDetail\":...}. Used here only where the vendor spec does not give a narrower, operation-specific error schema.",
+        "description": "helper.go/model.go: APIError, the generic envelope the connector unmarshals every error response into (doRequest -> uhttp.WithErrorResponse(&apiErr)). It is a superset covering the shapes used across all three base URLs: the directory endpoints return {\"errors\":[...]}, the org-routing layer returns a flat body whose reason is in \"message\", the user-management lifecycle API returns {\"key\":...,\"errorDetail\":...}, and SCIM returns {\"detail\":...} or, on 401/403, {\"error\":...}. Used here only where the vendor spec does not give a narrower, operation-specific error schema.",
         "properties": {
           "errors": {
             "type": "array",
@@ -2794,6 +2794,14 @@
           "message": {
             "type": "string",
             "description": "Flat org-routing-layer error reason (json tag \"message\")."
+          },
+          "detail": {
+            "type": "string",
+            "description": "SCIM error message (ScimError.detail)."
+          },
+          "error": {
+            "type": "string",
+            "description": "SCIM 401/403 error message (Failure.error)."
           },
           "key": {
             "type": "string",

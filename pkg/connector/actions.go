@@ -32,7 +32,7 @@ func (c *Connector) GlobalActions(ctx context.Context, registry actions.ActionRe
 			{
 				Name:        "user_id",
 				DisplayName: "User ID",
-				Description: "The Atlassian account ID to disable",
+				Description: "The Atlassian account ID to suspend",
 				IsRequired:  true,
 				Field:       &config_sdk.Field_StringField{},
 			},
@@ -66,7 +66,7 @@ func (c *Connector) GlobalActions(ctx context.Context, registry actions.ActionRe
 			{
 				Name:        "user_id",
 				DisplayName: "User ID",
-				Description: "The Atlassian account ID to enable",
+				Description: "The Atlassian account ID to restore",
 				IsRequired:  true,
 				Field:       &config_sdk.Field_StringField{},
 			},

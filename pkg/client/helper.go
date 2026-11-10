@@ -49,35 +49,26 @@ func (er *APIError) Message() string {
 	if er.Msg != "" {
 		return fmt.Sprintf("API error response detail: %s", er.Msg)
 	}
-	var forbidden struct {
+	if er.Detail != "" {
+		return fmt.Sprintf("API error response detail: %s", er.Detail)
+	}
+	if er.Failure != "" {
+		return fmt.Sprintf("API error response detail: %s", er.Failure)
+	}
+	var lifecycleContext struct {
 		Reason struct {
 			Key string `json:"key"`
 		} `json:"reason"`
-	}
-	var reasonSuffix string
-	if json.Unmarshal(er.Context, &forbidden) == nil && forbidden.Reason.Key != "" {
-		reasonSuffix = fmt.Sprintf(" (%s)", forbidden.Reason.Key)
-	}
-	var detail string
-	if json.Unmarshal(er.ErrorDetail, &detail) == nil && detail != "" {
-		return fmt.Sprintf("API error response detail: %s%s", detail, reasonSuffix)
-	}
-	var detailObject struct {
-		Message string `json:"message"`
-	}
-	if json.Unmarshal(er.ErrorDetail, &detailObject) == nil && detailObject.Message != "" {
-		return fmt.Sprintf("API error response detail: %s%s", detailObject.Message, reasonSuffix)
-	}
-	var conflict struct {
 		Message    string `json:"message"`
 		ErrorCodes []struct {
 			Code    string `json:"code"`
 			Message string `json:"message"`
 		} `json:"errorCodes"`
 	}
-	if json.Unmarshal(er.Context, &conflict) == nil && conflict.Message != "" {
+	var contextSuffix string
+	if json.Unmarshal(er.Context, &lifecycleContext) == nil {
 		var errorCodes []string
-		for _, errorCode := range conflict.ErrorCodes {
+		for _, errorCode := range lifecycleContext.ErrorCodes {
 			if errorCode.Code != "" {
 				entry := errorCode.Code
 				if errorCode.Message != "" {
@@ -86,13 +77,28 @@ func (er *APIError) Message() string {
 				errorCodes = append(errorCodes, entry)
 			}
 		}
-		if len(errorCodes) > 0 {
-			return fmt.Sprintf("API error response detail: %s (%s)", conflict.Message, strings.Join(errorCodes, ", "))
+		if lifecycleContext.Reason.Key != "" {
+			errorCodes = append(errorCodes, lifecycleContext.Reason.Key)
 		}
-		return fmt.Sprintf("API error response detail: %s", conflict.Message)
+		if len(errorCodes) > 0 {
+			contextSuffix = fmt.Sprintf(" (%s)", strings.Join(errorCodes, ", "))
+		}
+	}
+	var detail string
+	if json.Unmarshal(er.ErrorDetail, &detail) == nil && detail != "" {
+		return fmt.Sprintf("API error response detail: %s%s", detail, contextSuffix)
+	}
+	var detailObject struct {
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(er.ErrorDetail, &detailObject) == nil && detailObject.Message != "" {
+		return fmt.Sprintf("API error response detail: %s%s", detailObject.Message, contextSuffix)
+	}
+	if lifecycleContext.Message != "" {
+		return fmt.Sprintf("API error response detail: %s%s", lifecycleContext.Message, contextSuffix)
 	}
 	if er.Key != "" {
-		return fmt.Sprintf("API error response detail: %s%s", er.Key, reasonSuffix)
+		return fmt.Sprintf("API error response detail: %s%s", er.Key, contextSuffix)
 	}
 	return "Error response empty"
 }

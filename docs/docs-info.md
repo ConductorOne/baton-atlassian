@@ -28,6 +28,7 @@
 - This connector can also provision Group Memberships, meaning that you can Grant or Revoke a user's membership in a group.
 - This connector can also deprovision managed accounts (accounts on a verified domain): deleting a user deletes their Atlassian account across every product, after Atlassian's 14-day grace period.
 - This connector also exposes connector actions: `disable_user`/`enable_user` suspend and restore a user's access to the organization, and `deactivate_user`/`activate_user` deactivate and reactivate a managed account across every Atlassian product.
+- C1 sets the user's status from the action that ran and does not re-read the account until the next sync. A user restored with only `activate_user` while still suspended, or with only `enable_user` while still deactivated, shows as enabled in C1 but still has no access.
 
 ## Connector credentials
 
@@ -93,6 +94,8 @@
       - `/v2/orgs/{orgId}/directories/-/users/{accountId}/role-assignments`
       - `/v2/orgs/{orgId}/directories/-/groups/{groupId}/role-assignments`
       - `/v1/orgs/{orgId}`
+      - `/users/{accountId}/manage/lifecycle/disable`
+      - `/users/{accountId}/manage/lifecycle/enable`
 
    * If applicable: Is the list of scopes or permissions different to sync (read) versus provision (read-write)? If so, list the difference here.
    - This doesn't apply when the API Key is generated with an admin user and "no scopes" specified. The same API key works for both sync and provisioning.
