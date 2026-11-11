@@ -27,6 +27,20 @@ During the 14-day grace period, the deleted account stays on the app's **Account
 
 If you deprovision an account that is not managed by your organization, Atlassian rejects the request with `403 Forbidden: Caller must be a verified org admin of targeted account or be the targeted account`, and C1 falls back to manual deprovisioning.
 
+### Account status
+
+C1 sets each account's status from the status Atlassian reports for the user in your organization:
+
+| Atlassian status | Meaning | C1 status |
+| :--- | :--- | :--- |
+| `active` | Account and organization membership are both active | Enabled |
+| `suspended` | Access to the organization's apps is suspended | Disabled |
+| `not_invited` | Account has no membership in the organization | Disabled |
+| `deactivated` | Account is deactivated | Disabled |
+| `for_deletion` | Account is scheduled for deletion and can still be restored | Disabled |
+
+If Atlassian reports any other status, C1 marks the account Enabled only when both the account and the membership are active, Disabled when either one is inactive, closed, suspended or missing a membership, and leaves the status unspecified when it can't tell.
+
 ### Connector actions
 
 Connector actions are custom capabilities that extend C1 automations with app-specific operations. You can use connector actions in the [Perform connector action](/product/admin/automations-steps-reference#perform-connector-action) automation step.
