@@ -333,7 +333,7 @@ func scimUserToUser(scimUser *client.SCIMUserResponse) client.User {
 	return client.User{
 		AccountId:     accountID,
 		Status:        status,
-		Name:         scimUser.DisplayName,
+		Name:          scimUser.DisplayName,
 		Email:         email,
 		EmailVerified: true,
 	}
