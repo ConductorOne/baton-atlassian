@@ -96,7 +96,7 @@ These roles can be assigned to **users and groups**.
 | `atlassian/site-admin` | Site administration |
 | `atlassian/org-admin` | Organization administration |
 
-`atlassian/org-admin`, `atlassian/site-admin` and `atlassian/user-access-admin` appear in both tables. The connector places each grant by the `resourceOwner` of the role assignment, not by the role name: assignments owned by `platform` land on the organization, the rest on the workspace they belong to.
+`atlassian/org-admin`, `atlassian/site-admin` and `atlassian/user-access-admin` appear in both tables. The connector places each grant by the `resourceOwner` of the role assignment, not by the role name: a `platform` assignment lands on the organization and is read from users only, a `project` or `goal` assignment is skipped, and anything else lands on the workspace it belongs to.
 
 # Contributing, Support and Issues
 
