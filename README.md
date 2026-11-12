@@ -96,7 +96,7 @@ These roles can be assigned to **users and groups**.
 | `atlassian/site-admin` | Site administration |
 | `atlassian/org-admin` | Organization administration |
 
-`atlassian/user-access-admin` also appears in the organization table above. Atlassian scopes user access administration per product, so the same role can be granted at either level.
+`atlassian/org-admin`, `atlassian/site-admin` and `atlassian/user-access-admin` appear in both tables. The connector places each grant by the `resourceOwner` of the role assignment, not by the role name: assignments owned by `platform` land on the organization, the rest on the workspace they belong to.
 
 # Contributing, Support and Issues
 
