@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -48,14 +49,59 @@ func (er *APIError) Message() string {
 	if er.Msg != "" {
 		return fmt.Sprintf("API error response detail: %s", er.Msg)
 	}
-	if er.ErrorDetail != "" {
-		return fmt.Sprintf("API error response detail: %s", er.ErrorDetail)
+	if er.Detail != "" {
+		return fmt.Sprintf("API error response detail: %s", er.Detail)
 	}
-	var conflict struct {
+	if er.Failure != "" {
+		return fmt.Sprintf("API error response detail: %s", er.Failure)
+	}
+	if er.ScimType != "" {
+		return fmt.Sprintf("API error response detail: %s", er.ScimType)
+	}
+	var lifecycleContext struct {
+		Reason struct {
+			Key string `json:"key"`
+		} `json:"reason"`
+		Message    string `json:"message"`
+		ErrorCodes []struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"errorCodes"`
+	}
+	var contextSuffix string
+	if json.Unmarshal(er.Context, &lifecycleContext) == nil {
+		var errorCodes []string
+		for _, errorCode := range lifecycleContext.ErrorCodes {
+			if errorCode.Code != "" {
+				entry := errorCode.Code
+				if errorCode.Message != "" {
+					entry = fmt.Sprintf("%s: %s", errorCode.Code, errorCode.Message)
+				}
+				errorCodes = append(errorCodes, entry)
+			}
+		}
+		if lifecycleContext.Reason.Key != "" {
+			errorCodes = append(errorCodes, lifecycleContext.Reason.Key)
+		}
+		if len(errorCodes) > 0 {
+			contextSuffix = fmt.Sprintf(" (%s)", strings.Join(errorCodes, ", "))
+		}
+	}
+	if lifecycleContext.Message != "" {
+		return fmt.Sprintf("API error response detail: %s%s", lifecycleContext.Message, contextSuffix)
+	}
+	var detail string
+	if json.Unmarshal(er.ErrorDetail, &detail) == nil && detail != "" {
+		return fmt.Sprintf("API error response detail: %s%s", detail, contextSuffix)
+	}
+	var detailObject struct {
 		Message string `json:"message"`
 	}
-	if json.Unmarshal(er.Context, &conflict) == nil && conflict.Message != "" {
-		return fmt.Sprintf("API error response detail: %s", conflict.Message)
+	if json.Unmarshal(er.ErrorDetail, &detailObject) == nil && detailObject.Message != "" {
+		return fmt.Sprintf("API error response detail: %s%s", detailObject.Message, contextSuffix)
+	}
+	if er.Key != "" {
+		return fmt.Sprintf("API error response detail: %s%s", er.Key, contextSuffix)
 	}
 	return "Error response empty"
 }

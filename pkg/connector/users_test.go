@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/conductorone/baton-atlassian/pkg/client"
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const testAccountID = "712020:e19eff6d-a9d7-49e0-b743-044f410d5b00"
@@ -80,6 +82,66 @@ func TestUserDeleteEmptyIDNeverCallsAPI(t *testing.T) {
 	}
 	if _, err := newUserBuilder(c).Delete(ctx, &v2.ResourceId{ResourceType: userResourceType.Id}); err == nil {
 		t.Fatal("expected error for empty account ID")
+	}
+}
+
+func TestCreateAccountKeepsAPIStatusCode(t *testing.T) {
+	cases := []struct {
+		name        string
+		status      int
+		body        string
+		wantCode    codes.Code
+		wantMessage string
+	}{
+		{
+			name:        "existing user",
+			status:      http.StatusConflict,
+			body:        `{"schemas":["urn:ietf:params:scim:api:messages:2.0:Error"],"status":"409","scimType":"uniqueness","detail":"User already exists"}`,
+			wantCode:    codes.AlreadyExists,
+			wantMessage: "User already exists",
+		},
+		{
+			name:        "forbidden",
+			status:      http.StatusForbidden,
+			body:        `{"error":"Invalid token"}`,
+			wantCode:    codes.PermissionDenied,
+			wantMessage: "Invalid token",
+		},
+		{
+			name:        "unavailable",
+			status:      http.StatusServiceUnavailable,
+			body:        `{"schemas":["urn:ietf:params:scim:api:messages:2.0:Error"],"status":"503","detail":"Service unavailable"}`,
+			wantCode:    codes.Unavailable,
+			wantMessage: "Service unavailable",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			defer srv.Close()
+
+			ctx := context.Background()
+			c, err := client.New(ctx, client.WithScimToken("token"), client.WithScimBaseUrl(srv.URL))
+			if err != nil {
+				t.Fatal(err)
+			}
+			profile, err := structpb.NewStruct(map[string]any{"userName": "jdoe", "email": "jdoe@example.com"})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			_, _, _, err = newUserBuilder(c).CreateAccount(ctx, &v2.AccountInfo{Profile: profile}, nil)
+			if got := status.Code(err); got != tc.wantCode {
+				t.Fatalf("code = %v, want %v (err: %v)", got, tc.wantCode, err)
+			}
+			if !strings.Contains(err.Error(), tc.wantMessage) {
+				t.Errorf("error %q does not contain %q", err.Error(), tc.wantMessage)
+			}
+		})
 	}
 }
 

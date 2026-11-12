@@ -32,9 +32,74 @@ func TestAPIErrorMessage(t *testing.T) {
 			want: "API error response detail: Error: User account not found",
 		},
 		{
+			name: "lifecycle bad request keeps the object errorDetail",
+			body: `{"key":"badRequestFormat","errorKey":"bad-request-format","errorDetail":{"message":"Invalid content type (application/octet-stream).  These are valid: application/json"}}`,
+			want: "API error response detail: Invalid content type (application/octet-stream).  These are valid: application/json",
+		},
+		{
 			name: "lifecycle conflict keeps the context message",
 			body: `{"key":"conflict.lifecycleErrors","context":{"message":"Account is not eligible","accountId":"a","errorCodes":[{"code":"x"}]}}`,
+			want: "API error response detail: Account is not eligible (x)",
+		},
+		{
+			name: "lifecycle conflict lists every error code",
+			body: `{"key":"conflict.lifecycleErrors","context":{"message":"Account is not eligible","accountId":"a","errorCodes":[{"code":"x"},{"code":"y"}]}}`,
+			want: "API error response detail: Account is not eligible (x, y)",
+		},
+		{
+			name: "lifecycle conflict with empty errorCodes keeps only the message",
+			body: `{"key":"conflict.lifecycleErrors","context":{"message":"Account is not eligible","accountId":"a","errorCodes":[]}}`,
 			want: "API error response detail: Account is not eligible",
+		},
+		{
+			name: "lifecycle forbidden keeps the key and the reason key",
+			body: `{"key":"forbidden.action","context":{"allowed":false,"reason":{"key":"externalDirectory.scim"}}}`,
+			want: "API error response detail: forbidden.action (externalDirectory.scim)",
+		},
+		{
+			name: "lifecycle forbidden with errorDetail keeps the detail and the reason key",
+			body: `{"key":"forbidden.action","errorKey":"forbidden-action","errorDetail":"Error: Action not allowed","context":{"allowed":false,"reason":{"key":"externalDirectory.scim"}}}`,
+			want: "API error response detail: Error: Action not allowed (externalDirectory.scim)",
+		},
+		{
+			name: "object errorDetail keeps the message and the reason key",
+			body: `{"key":"forbidden.action","errorDetail":{"message":"Action not allowed on this account"},"context":{"allowed":false,"reason":{"key":"externalDirectory.scim"}}}`,
+			want: "API error response detail: Action not allowed on this account (externalDirectory.scim)",
+		},
+		{
+			name: "lifecycle conflict renders the message of each error code that has one",
+			body: `{"key":"conflict.lifecycleErrors","context":{"message":"Account is not eligible","accountId":"a","errorCodes":[{"code":"A","message":"msg"},{"code":"B"}]}}`,
+			want: "API error response detail: Account is not eligible (A: msg, B)",
+		},
+		{
+			name: "lifecycle conflict with errorDetail prefers the context message",
+			body: `{"key":"conflict.lifecycleErrors","errorDetail":"Error: Lifecycle errors","context":{"message":"Not eligible","accountId":"a","errorCodes":[{"code":"A","message":"msg"}]}}`,
+			want: "API error response detail: Not eligible (A: msg)",
+		},
+		{
+			name: "lifecycle conflict with empty message keeps the key and the error codes",
+			body: `{"key":"conflict.lifecycleErrors","context":{"message":"","accountId":"a","errorCodes":[{"code":"A"}]}}`,
+			want: "API error response detail: conflict.lifecycleErrors (A)",
+		},
+		{
+			name: "SCIM error keeps the detail",
+			body: `{"schemas":["urn:ietf:params:scim:api:messages:2.0:Error"],"status":"404","detail":"Directory does not exist"}`,
+			want: "API error response detail: Directory does not exist",
+		},
+		{
+			name: "SCIM error without detail keeps the scimType",
+			body: `{"schemas":["urn:ietf:params:scim:api:messages:2.0:Error"],"status":"400","scimType":"invalidValue"}`,
+			want: "API error response detail: invalidValue",
+		},
+		{
+			name: "SCIM failure keeps the error",
+			body: `{"error":"Invalid token"}`,
+			want: "API error response detail: Invalid token",
+		},
+		{
+			name: "lifecycle key-only body keeps the key",
+			body: `{"key":"forbidden.targetUnverified"}`,
+			want: "API error response detail: forbidden.targetUnverified",
 		},
 		{
 			name: "empty body",

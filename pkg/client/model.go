@@ -17,14 +17,19 @@ type APIErrorDetail struct {
 
 // APIError models Atlassian's error envelopes: the directory endpoints return
 // {"errors":[...]}, the org-routing layer returns a flat body whose reason is in "message",
-// and the user-management lifecycle API returns {"key":...,"errorDetail":...}.
+// the user-management lifecycle API returns {"key":...,"errorDetail":...}, and SCIM returns
+// {"detail":...,"scimType":...} or, on 401/403, {"error":...}.
 // Reading each reason keeps it instead of "Error response empty".
 type APIError struct {
-	Errors      []APIErrorDetail `json:"errors"`
-	Msg         string           `json:"message"`
-	Key         string           `json:"key"`
-	ErrorDetail string           `json:"errorDetail"`
-	// Context is a string on lifecycle 403/404 and an object with "message" on 409.
+	Errors   []APIErrorDetail `json:"errors"`
+	Msg      string           `json:"message"`
+	Detail   string           `json:"detail"`
+	Failure  string           `json:"error"`
+	ScimType string           `json:"scimType"`
+	Key      string           `json:"key"`
+	// ErrorDetail is a string on lifecycle 403/404 and an object with "message" on 400.
+	ErrorDetail json.RawMessage `json:"errorDetail"`
+	// Context is an object on lifecycle 403 forbidden.action ("reason") and 409 ("message", "errorCodes"), and a string elsewhere.
 	Context json.RawMessage `json:"context"`
 }
 

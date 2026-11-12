@@ -239,13 +239,13 @@ func (b *userBuilder) CreateAccount(ctx context.Context, accountInfo *v2.Account
 
 	userNameVal := profileFields["userName"]
 	if userNameVal == nil || userNameVal.GetStringValue() == "" {
-		return nil, nil, nil, status.Error(codes.InvalidArgument, "userName is required")
+		return nil, nil, nil, status.Error(codes.InvalidArgument, "baton-atlassian: userName is required")
 	}
 	userName := userNameVal.GetStringValue()
 
 	emailVal := profileFields["email"]
 	if emailVal == nil || emailVal.GetStringValue() == "" {
-		return nil, nil, nil, status.Error(codes.InvalidArgument, "email is required")
+		return nil, nil, nil, status.Error(codes.InvalidArgument, "baton-atlassian: email is required")
 	}
 	email := emailVal.GetStringValue()
 
@@ -273,14 +273,14 @@ func (b *userBuilder) CreateAccount(ctx context.Context, accountInfo *v2.Account
 
 	scimResponse, err := b.client.CreateUser(ctx, request)
 	if err != nil {
-		return nil, nil, nil, uhttp.WrapErrors(codes.Internal, "failed to create user", err)
+		return nil, nil, nil, fmt.Errorf("baton-atlassian: failed to create user: %w", err)
 	}
 
 	user := scimUserToUser(scimResponse)
 
 	userResource, err := parseIntoUserResource(user)
 	if err != nil {
-		return nil, nil, nil, uhttp.WrapErrors(codes.Internal, "failed to parse user resource", err)
+		return nil, nil, nil, uhttp.WrapErrors(codes.Internal, "baton-atlassian: failed to parse user resource", err)
 	}
 
 	return &v2.CreateAccountResponse_SuccessResult{

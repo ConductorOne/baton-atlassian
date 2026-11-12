@@ -6,6 +6,7 @@
   - **Users**: All users in the organization directory
   - **Groups**: All groups in the organization (e.g., org-admins, jira-admins, jira-users) with their memberships
   - **Workspaces**: Product-sites (Jira, Jira Software, Confluence, Rovo, etc.)
+  - **API Tokens**: User API tokens issued in the organization (label, creation, expiry and last-used times), linked to the user that owns each token
 
 2. What roles/grants does the connector sync?
 
@@ -26,6 +27,8 @@
   The connector is unable to determine which will be effectively available, but a descriptive error message should communicate the situation when a Grant can't be provisioned.
 - This connector can also provision Group Memberships, meaning that you can Grant or Revoke a user's membership in a group.
 - This connector can also deprovision managed accounts (accounts on a verified domain): deleting a user deletes their Atlassian account across every product, after Atlassian's 14-day grace period.
+- This connector also exposes connector actions: `disable_user`/`enable_user` suspend and restore a user's access to the organization, and `deactivate_user`/`activate_user` deactivate and reactivate a managed account across every Atlassian product.
+- C1 sets the user's status from the action that ran and does not re-read the account until the next sync. A user restored with only `activate_user` while still suspended, or with only `enable_user` while still deactivated, shows as enabled in C1 but still has no access.
 
 ## Connector credentials
 
@@ -65,7 +68,6 @@
              I need access to the following endpoints of the Atlassian Administration Cloud API:
              * Grant User Access: https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/\#api-v1-orgs-orgid-users-userid-roles-assign-post
              * Revoke User Access: https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/\#api-v1-orgs-orgid-users-userid-roles-revoke-post
-             * Invite User to Org: https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/\#api-v1-orgs-orgid-users-invite-post
              I'm working with an API Client and I need to be able to use these endpoints on my Atlassian Organization.
 
              My organization ID is: <ATLASSIAN_ORGANIZATION_ID>
@@ -92,6 +94,9 @@
       - `/v2/orgs/{orgId}/directories/-/users/{accountId}/role-assignments`
       - `/v2/orgs/{orgId}/directories/-/groups/{groupId}/role-assignments`
       - `/v1/orgs/{orgId}`
+      - `/users/{accountId}/manage/lifecycle/disable`
+      - `/users/{accountId}/manage/lifecycle/enable`
+      - `/users/{accountId}/manage/lifecycle/delete`
 
    * If applicable: Is the list of scopes or permissions different to sync (read) versus provision (read-write)? If so, list the difference here.
    - This doesn't apply when the API Key is generated with an admin user and "no scopes" specified. The same API key works for both sync and provisioning.

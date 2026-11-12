@@ -12,7 +12,7 @@
     },
     {
       "url": "https://api.atlassian.com",
-      "description": "Atlassian user-management lifecycle API. Used only by the account-deletion endpoint."
+      "description": "Atlassian user-management lifecycle API. Used by the account lifecycle endpoints (delete, disable, enable)."
     },
     {
       "url": "{scimBaseUrl}",
@@ -266,7 +266,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:128,158",
+          "client": "pkg/client/client.go:130,160",
           "evidence": "vendor spec"
         }
       }
@@ -364,7 +364,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/api-access/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:188",
+          "client": "pkg/client/client.go:190",
           "evidence": "vendor spec"
         }
       }
@@ -471,7 +471,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:215",
+          "client": "pkg/client/client.go:217",
           "evidence": "vendor spec"
         }
       }
@@ -600,7 +600,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:243",
+          "client": "pkg/client/client.go:245",
           "evidence": "vendor spec"
         }
       }
@@ -738,7 +738,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:270",
+          "client": "pkg/client/client.go:272",
           "evidence": "vendor spec"
         }
       }
@@ -876,7 +876,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:297",
+          "client": "pkg/client/client.go:299",
           "evidence": "vendor spec"
         }
       }
@@ -983,7 +983,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:325",
+          "client": "pkg/client/client.go:327",
           "evidence": "vendor spec"
         }
       }
@@ -1120,7 +1120,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:350",
+          "client": "pkg/client/client.go:352",
           "evidence": "vendor spec"
         }
       }
@@ -1246,7 +1246,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:376",
+          "client": "pkg/client/client.go:378",
           "evidence": "vendor spec"
         }
       }
@@ -1381,7 +1381,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:395",
+          "client": "pkg/client/client.go:398",
           "evidence": "vendor spec"
         }
       }
@@ -1516,7 +1516,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:419",
+          "client": "pkg/client/client.go:422",
           "evidence": "vendor spec"
         }
       }
@@ -1605,7 +1605,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-suspend-access-post",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:444",
+          "client": "pkg/client/client.go:447",
           "evidence": "client code only"
         }
       }
@@ -1684,7 +1684,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-restore-access-post",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:464",
+          "client": "pkg/client/client.go:467",
           "evidence": "client code only"
         }
       }
@@ -1693,7 +1693,7 @@
       "servers": [
         {
           "url": "https://api.atlassian.com",
-          "description": "Atlassian user-management lifecycle API. Used only by the account-deletion endpoint."
+          "description": "Atlassian user-management lifecycle API. Used by the account lifecycle endpoints (delete, disable, enable)."
         }
       ],
       "post": {
@@ -1771,8 +1771,216 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-management/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:484",
+          "client": "pkg/client/client.go:487",
           "evidence": "vendor spec"
+        }
+      }
+    },
+    "/users/{accountId}/manage/lifecycle/disable": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com",
+          "description": "Atlassian user-management lifecycle API. Used by the account lifecycle endpoints (delete, disable, enable)."
+        }
+      ],
+      "post": {
+        "operationId": "deactivateUser",
+        "summary": "Deactivate a managed account",
+        "description": "Deactivates a managed account across every Atlassian product. It can be reactivated with the enable endpoint. The endpoint answers 400 `badRequestFormat` unless the request carries `Content-Type: application/json`, even with no fields; the connector always sends `{}`.",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "description": "Unique ID of the user's account being deactivated.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "description": "Optional. The connector sends an empty object.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "description": "Message shown to the user. If none is supplied, a default message will be used."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Success. No content."
+          },
+          "400": {
+            "description": "Bad request. `badRequestFormat` is returned when the request lacks a JSON Content-Type; `errorDetail` is an object with `message`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "You are unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleUnauthorized"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but not authorized to take this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleForbidden"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleNotFoundAccount"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "This account isn't eligible for the requested action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleConflict"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-disable-post",
+          "accessed": "2026-11-05",
+          "client": "pkg/client/client.go:507",
+          "evidence": "docs + live response (204, 400); 401/403/404/409 bodies modeled on deleteUser"
+        }
+      }
+    },
+    "/users/{accountId}/manage/lifecycle/enable": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com",
+          "description": "Atlassian user-management lifecycle API. Used by the account lifecycle endpoints (delete, disable, enable)."
+        }
+      ],
+      "post": {
+        "operationId": "activateUser",
+        "summary": "Activate a managed account",
+        "description": "Reactivates a previously deactivated managed account. The endpoint answers 400 `badRequestFormat` unless the request carries `Content-Type: application/json`, even with no fields; the connector always sends `{}`.",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "description": "Unique ID of the user's account being activated.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "description": "Optional. The connector sends an empty object.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Success. No content."
+          },
+          "400": {
+            "description": "Bad request. `badRequestFormat` is returned when the request lacks a JSON Content-Type; `errorDetail` is an object with `message`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "You are unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleUnauthorized"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but not authorized to take this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleForbidden"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleNotFoundAccount"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "This account isn't eligible for the requested action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleConflict"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-enable-post",
+          "accessed": "2026-11-05",
+          "client": "pkg/client/client.go:528",
+          "evidence": "docs + live response (204, 400); 401/403/404/409 bodies modeled on deleteUser"
         }
       }
     },
@@ -1873,7 +2081,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-provisioning/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:504",
+          "client": "pkg/client/client.go:549",
           "evidence": "vendor spec"
         }
       }
@@ -2557,7 +2765,7 @@
       },
       "AtlassianAPIError": {
         "type": "object",
-        "description": "helper.go/model.go: APIError, the generic envelope the connector unmarshals every error response into (doRequest -> uhttp.WithErrorResponse(&apiErr)). It is a superset covering the shapes used across all three base URLs: the directory endpoints return {\"errors\":[...]}, the org-routing layer returns a flat body whose reason is in \"message\", and the user-management lifecycle API returns {\"key\":...,\"errorDetail\":...}. Used here only where the vendor spec does not give a narrower, operation-specific error schema.",
+        "description": "helper.go/model.go: APIError, the generic envelope the connector unmarshals every error response into (doRequest -> uhttp.WithErrorResponse(&apiErr)). It is a superset covering the shapes used across all three base URLs: the directory endpoints return {\"errors\":[...]}, the org-routing layer returns a flat body whose reason is in \"message\", the user-management lifecycle API returns {\"key\":...,\"errorDetail\":...}, and SCIM returns {\"detail\":...,\"scimType\":...} or, on 401/403, {\"error\":...}. Used here only where the vendor spec does not give a narrower, operation-specific error schema.",
         "properties": {
           "errors": {
             "type": "array",
@@ -2587,15 +2795,40 @@
             "type": "string",
             "description": "Flat org-routing-layer error reason (json tag \"message\")."
           },
+          "detail": {
+            "type": "string",
+            "description": "SCIM error message (ScimError.detail)."
+          },
+          "error": {
+            "type": "string",
+            "description": "SCIM 401/403 error message (Failure.error)."
+          },
+          "scimType": {
+            "type": "string",
+            "description": "SCIM error type (ScimError.scimType), read when detail is missing."
+          },
           "key": {
             "type": "string",
             "description": "Lifecycle-API error key, e.g. accountNotFound, notFound, conflict.lifecycleErrors."
           },
           "errorDetail": {
-            "type": "string"
+            "description": "A string on lifecycle 403/404, an object with \"message\" on lifecycle 400.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
           },
           "context": {
-            "description": "A string on lifecycle 403/404, an object with \"message\" on lifecycle 409."
+            "description": "An object on lifecycle 403 forbidden.action (\"reason\") and 409 (\"message\", \"errorCodes\"); a string elsewhere."
           }
         }
       },
