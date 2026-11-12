@@ -92,6 +92,11 @@ These roles can be assigned to **users and groups**.
 | `atlassian/customer` | Customer access |
 | `atlassian/basic` | Basic access |
 | `atlassian/stakeholder` | Stakeholder access |
+| `atlassian/user-access-admin` | User access administration on the workspace |
+| `atlassian/site-admin` | Site administration |
+| `atlassian/org-admin` | Organization administration |
+
+`atlassian/user-access-admin` also appears in the organization table above. Atlassian scopes user access administration per product, so the same role can be granted at either level.
 
 # Contributing, Support and Issues
 
