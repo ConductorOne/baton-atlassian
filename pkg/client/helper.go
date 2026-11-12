@@ -55,6 +55,9 @@ func (er *APIError) Message() string {
 	if er.Failure != "" {
 		return fmt.Sprintf("API error response detail: %s", er.Failure)
 	}
+	if er.ScimType != "" {
+		return fmt.Sprintf("API error response detail: %s", er.ScimType)
+	}
 	var lifecycleContext struct {
 		Reason struct {
 			Key string `json:"key"`
@@ -84,6 +87,9 @@ func (er *APIError) Message() string {
 			contextSuffix = fmt.Sprintf(" (%s)", strings.Join(errorCodes, ", "))
 		}
 	}
+	if lifecycleContext.Message != "" {
+		return fmt.Sprintf("API error response detail: %s%s", lifecycleContext.Message, contextSuffix)
+	}
 	var detail string
 	if json.Unmarshal(er.ErrorDetail, &detail) == nil && detail != "" {
 		return fmt.Sprintf("API error response detail: %s%s", detail, contextSuffix)
@@ -93,9 +99,6 @@ func (er *APIError) Message() string {
 	}
 	if json.Unmarshal(er.ErrorDetail, &detailObject) == nil && detailObject.Message != "" {
 		return fmt.Sprintf("API error response detail: %s%s", detailObject.Message, contextSuffix)
-	}
-	if lifecycleContext.Message != "" {
-		return fmt.Sprintf("API error response detail: %s%s", lifecycleContext.Message, contextSuffix)
 	}
 	if er.Key != "" {
 		return fmt.Sprintf("API error response detail: %s%s", er.Key, contextSuffix)

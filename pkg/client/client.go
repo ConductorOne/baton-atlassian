@@ -483,6 +483,7 @@ func (c *AtlassianClient) EnableUser(ctx context.Context, accountID string) erro
 	return nil
 }
 
+// DeleteUser deletes a managed account after Atlassian's 14-day grace period. Requires an unscoped organization API key.
 // https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-delete-post
 func (c *AtlassianClient) DeleteUser(ctx context.Context, accountID string) error {
 	requestURL, err := url.JoinPath(c.getLifecycleBaseURL(), fmt.Sprintf(userLifecycleDeleteEP, url.PathEscape(accountID)))

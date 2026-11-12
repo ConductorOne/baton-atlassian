@@ -72,9 +72,9 @@ func TestAPIErrorMessage(t *testing.T) {
 			want: "API error response detail: Account is not eligible (A: msg, B)",
 		},
 		{
-			name: "lifecycle conflict with errorDetail keeps the detail and the error codes",
+			name: "lifecycle conflict with errorDetail prefers the context message",
 			body: `{"key":"conflict.lifecycleErrors","errorDetail":"Error: Lifecycle errors","context":{"message":"Not eligible","accountId":"a","errorCodes":[{"code":"A","message":"msg"}]}}`,
-			want: "API error response detail: Error: Lifecycle errors (A: msg)",
+			want: "API error response detail: Not eligible (A: msg)",
 		},
 		{
 			name: "lifecycle conflict with empty message keeps the key and the error codes",
@@ -85,6 +85,11 @@ func TestAPIErrorMessage(t *testing.T) {
 			name: "SCIM error keeps the detail",
 			body: `{"schemas":["urn:ietf:params:scim:api:messages:2.0:Error"],"status":"404","detail":"Directory does not exist"}`,
 			want: "API error response detail: Directory does not exist",
+		},
+		{
+			name: "SCIM error without detail keeps the scimType",
+			body: `{"schemas":["urn:ietf:params:scim:api:messages:2.0:Error"],"status":"400","scimType":"invalidValue"}`,
+			want: "API error response detail: invalidValue",
 		},
 		{
 			name: "SCIM failure keeps the error",

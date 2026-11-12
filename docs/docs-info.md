@@ -96,6 +96,7 @@
       - `/v1/orgs/{orgId}`
       - `/users/{accountId}/manage/lifecycle/disable`
       - `/users/{accountId}/manage/lifecycle/enable`
+      - `/users/{accountId}/manage/lifecycle/delete`
 
    * If applicable: Is the list of scopes or permissions different to sync (read) versus provision (read-write)? If so, list the difference here.
    - This doesn't apply when the API Key is generated with an admin user and "no scopes" specified. The same API key works for both sync and provisioning.
