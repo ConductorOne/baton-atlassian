@@ -3,6 +3,7 @@ package connector
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	config_sdk "github.com/conductorone/baton-sdk/pb/c1/config/v1"
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
@@ -27,7 +28,7 @@ func (c *Connector) GlobalActions(ctx context.Context, registry actions.ActionRe
 	disableUserSchema := &v2.BatonActionSchema{
 		Name:        "disable_user",
 		DisplayName: "Suspend User",
-		Description: "Suspend an Atlassian user's access to the organization",
+		Description: "Suspend an Atlassian user's access in every directory of the organization",
 		Arguments: []*config_sdk.Field{
 			{
 				Name:        "user_id",
@@ -61,7 +62,7 @@ func (c *Connector) GlobalActions(ctx context.Context, registry actions.ActionRe
 	enableUserSchema := &v2.BatonActionSchema{
 		Name:        "enable_user",
 		DisplayName: "Restore User",
-		Description: "Restore an Atlassian user's access to the organization",
+		Description: "Restore an Atlassian user's access in every directory of the organization",
 		Arguments: []*config_sdk.Field{
 			{
 				Name:        "user_id",
@@ -162,37 +163,29 @@ func (c *Connector) GlobalActions(ctx context.Context, registry actions.ActionRe
 	return nil
 }
 
-// handleDisableUser suspends an Atlassian user's access to the organization.
+// handleDisableUser suspends an Atlassian user's access in every directory of the organization the user belongs to.
 func (c *Connector) handleDisableUser(
 	ctx context.Context,
 	args *structpb.Struct,
 ) (*structpb.Struct, annotations.Annotations, error) {
-	l := ctxzap.Extract(ctx)
-
-	userID, err := actions.RequireStringArg(args, "user_id")
-	if err != nil {
-		return nil, nil, status.Errorf(codes.InvalidArgument, "baton-atlassian: %v", err)
-	}
-	if userID == "" {
-		return nil, nil, status.Error(codes.InvalidArgument, "baton-atlassian: user_id cannot be empty")
-	}
-
-	l.Debug("disabling user", zap.String("user_id", userID))
-
-	err = c.client.DisableUser(ctx, userID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("baton-atlassian: failed to disable user %s: %w", userID, err)
-	}
-
-	l.Info("user disabled successfully", zap.String("user_id", userID))
-
-	return actions.NewReturnValues(true), nil, nil
+	return c.applyToUserDirectories(ctx, args, "suspend", c.client.SuspendUserInDirectory)
 }
 
-// handleEnableUser restores an Atlassian user's access to the organization.
+// handleEnableUser restores an Atlassian user's access in every directory of the organization the user belongs to.
 func (c *Connector) handleEnableUser(
 	ctx context.Context,
 	args *structpb.Struct,
+) (*structpb.Struct, annotations.Annotations, error) {
+	return c.applyToUserDirectories(ctx, args, "restore", c.client.RestoreUserInDirectory)
+}
+
+// applyToUserDirectories runs the per-directory call on every directory the user belongs to.
+// It keeps going after a failure so one rejected directory doesn't block the rest.
+func (c *Connector) applyToUserDirectories(
+	ctx context.Context,
+	args *structpb.Struct,
+	verb string,
+	call func(ctx context.Context, directoryID, accountID string) error,
 ) (*structpb.Struct, annotations.Annotations, error) {
 	l := ctxzap.Extract(ctx)
 
@@ -204,14 +197,41 @@ func (c *Connector) handleEnableUser(
 		return nil, nil, status.Error(codes.InvalidArgument, "baton-atlassian: user_id cannot be empty")
 	}
 
-	l.Debug("enabling user", zap.String("user_id", userID))
-
-	err = c.client.EnableUser(ctx, userID)
+	directoryIDs, err := c.client.ListUserDirectoryIDs(ctx, userID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("baton-atlassian: failed to enable user %s: %w", userID, err)
+		return nil, nil, fmt.Errorf("baton-atlassian: failed to resolve directories for user %s: %w", userID, err)
+	}
+	if len(directoryIDs) == 0 {
+		return nil, nil, status.Errorf(codes.NotFound, "baton-atlassian: user %s has no membership in any directory of the organization", userID)
 	}
 
-	l.Info("user enabled successfully", zap.String("user_id", userID))
+	var (
+		failures []string
+		firstErr error
+	)
+	for _, directoryID := range directoryIDs {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, err
+		}
+
+		l.Debug("applying user action in directory",
+			zap.String("action", verb), zap.String("user_id", userID), zap.String("directory_id", directoryID))
+
+		if err := call(ctx, directoryID, userID); err != nil {
+			failures = append(failures, fmt.Sprintf("%s: %s", directoryID, err.Error()))
+			if firstErr == nil {
+				firstErr = err
+			}
+		}
+	}
+
+	if firstErr != nil {
+		return nil, nil, fmt.Errorf("baton-atlassian: failed to %s user %s in %d of %d directories [%s]: %w",
+			verb, userID, len(failures), len(directoryIDs), strings.Join(failures, "; "), firstErr)
+	}
+
+	l.Info("user action applied in every directory",
+		zap.String("action", verb), zap.String("user_id", userID), zap.Int("directories", len(directoryIDs)))
 
 	return actions.NewReturnValues(true), nil, nil
 }

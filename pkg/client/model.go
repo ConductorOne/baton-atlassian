@@ -131,6 +131,21 @@ type Group struct {
 	} `json:"links"`
 }
 
+type DirectoriesResponse struct {
+	Data  []Directory `json:"data"`
+	Links struct {
+		Next string `json:"next"`
+		Prev string `json:"prev"`
+		Self string `json:"self"`
+	} `json:"links"`
+}
+
+type Directory struct {
+	DirectoryId string `json:"directoryId"`
+	Name        string `json:"name"`
+	Icon        string `json:"icon"`
+}
+
 type GroupDetailResponse struct {
 	Data Group `json:"data"`
 }
