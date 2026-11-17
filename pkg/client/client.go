@@ -135,7 +135,7 @@ func (c *AtlassianClient) GetGroupMembers(ctx context.Context, pageToken, groupI
 	}
 
 	reqOpts := []RequestOpt{
-		WithPageSize(maxItemsPerPage),
+		WithPageSize(groupMembersPageSize),
 		WithQueryParam("groupIds", groupID),
 	}
 	if pageToken != "" {

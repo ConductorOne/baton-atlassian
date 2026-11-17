@@ -14,6 +14,11 @@ import (
 // maxItemsPerPage that the API allows is 100. The default value is 20.
 const maxItemsPerPage = 100
 
+// groupMembersPageSize is smaller than maxItemsPerPage because listing the members of a
+// very large group (users?groupIds=...) at 100 per page can exceed Atlassian's 14s
+// gateway timeout and return a 504 on every attempt.
+const groupMembersPageSize = 25
+
 func WithPageSize(pageSize int) RequestOpt {
 	if pageSize < 0 {
 		pageSize = 0
