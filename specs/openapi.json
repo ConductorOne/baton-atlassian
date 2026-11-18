@@ -1521,17 +1521,17 @@
         }
       }
     },
-    "/v1/orgs/{orgId}/directory/users/{accountId}/suspend-access": {
+    "/v2/orgs/{orgId}/directories": {
       "servers": [
         {
           "url": "https://api.atlassian.com/admin",
           "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
         }
       ],
-      "post": {
-        "operationId": "disableUser",
-        "summary": "Suspend a user's access (client-cited endpoint; absent from the current published vendor spec)",
-        "description": "client.go cites https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-suspend-access-post, but the org.json swagger fetched 2026-10-05 does not list this v1 path; it only documents the v2 equivalent, POST /v2/orgs/{orgId}/directories/{directoryId}/users/{accountId}/suspend. Request/response shape is therefore unproven by machine-readable spec; see the blocker note in the PR provenance table. Per client.go comment, cannot be used on organization administrators (returns 400).",
+      "get": {
+        "operationId": "listUserDirectories",
+        "summary": "Get the directories a user belongs to",
+        "description": "ListUserDirectoryIDs always sends `accountId`, so the response only lists the directories the user is a member of. The connector reads every page in one call because it backs a single action (disable_user / enable_user), not a sync. Vendor scope: `read:directories:admin`.",
         "parameters": [
           {
             "name": "orgId",
@@ -1544,20 +1544,48 @@
           },
           {
             "name": "accountId",
-            "in": "path",
+            "in": "query",
             "required": true,
-            "description": "Atlassian account ID.",
+            "description": "Atlassian account ID. Vendor: filters the results to only the directories where the specified user is a member. The connector always sends it.",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Pagination cursor. The connector sets this from the previous page's `links.next` value (WithPageToken) and stops with an error if a cursor repeats.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size. The connector sends 100 (maxItemsPerPage) via WithPageSize. Vendor default 20, vendor max 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
             }
           }
         ],
         "responses": {
-          "204": {
-            "description": "Assumed success response; not confirmed by vendor spec (client code only)."
+          "200": {
+            "description": "A page of the user's directories.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectoriesResponse"
+                }
+              }
+            }
           },
           "400": {
-            "description": "Cannot be used on organization administrators (client.go comment).",
+            "description": "Request not validated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1567,7 +1595,7 @@
             }
           },
           "401": {
-            "description": "Not authenticated (unproven shape).",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1576,8 +1604,8 @@
               }
             }
           },
-          "404": {
-            "description": "Not found (unproven shape).",
+          "429": {
+            "description": "Rate limited.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1587,7 +1615,7 @@
             }
           },
           "500": {
-            "description": "Unexpected error (unproven shape).",
+            "description": "Internal error.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1603,14 +1631,14 @@
           }
         ],
         "x-source": {
-          "url": "https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-suspend-access-post",
-          "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:447",
-          "evidence": "client code only"
+          "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
+          "accessed": "2026-11-13",
+          "client": "pkg/client/client.go:449",
+          "evidence": "vendor spec"
         }
       }
     },
-    "/v1/orgs/{orgId}/directory/users/{accountId}/restore-access": {
+    "/v2/orgs/{orgId}/directories/{directoryId}/users/{accountId}/suspend": {
       "servers": [
         {
           "url": "https://api.atlassian.com/admin",
@@ -1618,15 +1646,24 @@
         }
       ],
       "post": {
-        "operationId": "enableUser",
-        "summary": "Restore a user's access (client-cited endpoint; absent from the current published vendor spec)",
-        "description": "client.go cites https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-restore-access-post, but the org.json swagger fetched 2026-10-05 does not list this v1 path; it only documents the v2 equivalent, POST /v2/orgs/{orgId}/directories/{directoryId}/users/{accountId}/restore. Request/response shape is therefore unproven by machine-readable spec; see the blocker note in the PR provenance table.",
+        "operationId": "suspendUserInDirectory",
+        "summary": "Suspend user access in directory",
+        "description": "Sent with no request body. The user keeps their roles and group memberships and regains them on restore; Atlassian stops billing for the user while suspended. No scope covers this endpoint, so it requires an unscoped organization API key.",
         "parameters": [
           {
             "name": "orgId",
             "in": "path",
             "required": true,
             "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "directoryId",
+            "in": "path",
+            "required": true,
+            "description": "Directory ID. The connector resolves every directory the user belongs to via ListUserDirectoryIDs (GET .../directories?accountId=) and calls this once per directory; it never sends the literal `-`.",
             "schema": {
               "type": "string"
             }
@@ -1643,10 +1680,30 @@
         ],
         "responses": {
           "204": {
-            "description": "Assumed success response; not confirmed by vendor spec (client code only)."
+            "description": "Success."
+          },
+          "400": {
+            "description": "Malformed request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Not authenticated (unproven shape).",
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this request.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1656,7 +1713,17 @@
             }
           },
           "404": {
-            "description": "Not found (unproven shape).",
+            "description": "Organization, directory, or user not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1666,7 +1733,7 @@
             }
           },
           "500": {
-            "description": "Unexpected error (unproven shape).",
+            "description": "Unexpected error.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1682,10 +1749,128 @@
           }
         ],
         "x-source": {
-          "url": "https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-restore-access-post",
-          "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:467",
-          "evidence": "client code only"
+          "url": "https://developer.atlassian.com/cloud/admin/organization/rest/api-group-users/#api-v2-orgs-orgid-directories-directoryid-users-accountid-suspend-post",
+          "accessed": "2026-11-13",
+          "client": "pkg/client/client.go:498",
+          "evidence": "vendor spec"
+        }
+      }
+    },
+    "/v2/orgs/{orgId}/directories/{directoryId}/users/{accountId}/restore": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com/admin",
+          "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+        }
+      ],
+      "post": {
+        "operationId": "restoreUserInDirectory",
+        "summary": "Restore user access in directory",
+        "description": "Sent with no request body. The user regains the roles and group memberships they had before the suspension; Atlassian resumes billing. No scope covers this endpoint, so it requires an unscoped organization API key.",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "directoryId",
+            "in": "path",
+            "required": true,
+            "description": "Directory ID. The connector resolves every directory the user belongs to via ListUserDirectoryIDs (GET .../directories?accountId=) and calls this once per directory; it never sends the literal `-`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian account ID.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success."
+          },
+          "400": {
+            "description": "Malformed request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization, directory, or user not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtlassianAPIError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/organization/rest/api-group-users/#api-v2-orgs-orgid-directories-directoryid-users-accountid-restore-post",
+          "accessed": "2026-11-13",
+          "client": "pkg/client/client.go:505",
+          "evidence": "vendor spec"
         }
       }
     },
@@ -1771,7 +1956,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-management/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:487",
+          "client": "pkg/client/client.go:527",
           "evidence": "vendor spec"
         }
       }
@@ -1878,7 +2063,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-disable-post",
           "accessed": "2026-11-05",
-          "client": "pkg/client/client.go:507",
+          "client": "pkg/client/client.go:548",
           "evidence": "docs + live response (204, 400); 401/403/404/409 bodies modeled on deleteUser"
         }
       }
@@ -1979,7 +2164,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-enable-post",
           "accessed": "2026-11-05",
-          "client": "pkg/client/client.go:528",
+          "client": "pkg/client/client.go:570",
           "evidence": "docs + live response (204, 400); 401/403/404/409 bodies modeled on deleteUser"
         }
       }
@@ -2081,7 +2266,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-provisioning/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:549",
+          "client": "pkg/client/client.go:591",
           "evidence": "vendor spec"
         }
       }
@@ -2438,6 +2623,39 @@
             "type": "string",
             "nullable": true,
             "description": "Base-64 encoded continuation token. Empty/omitted on the first page."
+          }
+        }
+      },
+      "Directory": {
+        "type": "object",
+        "description": "A directory the user belongs to (vendor MultiDirectoryUserDirectory). The connector reads only `directoryId`.",
+        "properties": {
+          "directoryId": {
+            "type": "string",
+            "description": "Unique directory identifier."
+          },
+          "name": {
+            "type": "string",
+            "description": "Directory name."
+          },
+          "icon": {
+            "type": "string",
+            "description": "URL of the directory's icon."
+          }
+        }
+      },
+      "DirectoriesResponse": {
+        "type": "object",
+        "description": "Vendor MultiDirectoryUserDirectoryPage.",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Directory"
+            }
+          },
+          "links": {
+            "$ref": "#/components/schemas/LinkPageCursor"
           }
         }
       },

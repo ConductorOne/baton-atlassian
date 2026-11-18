@@ -52,12 +52,14 @@ Connector actions are custom capabilities that extend C1 automations with app-sp
 
 | Action name | Additional fields | Description |
 |-------------|-------------------|-------------|
-| enable_user | `user_id` (string, required) | Restore an Atlassian user's access to the organization |
-| disable_user     | `user_id` (string, required) | Suspend an Atlassian user's access to the organization |
+| enable_user | `user_id` (string, required) | Restore an Atlassian user's access in every directory of the organization |
+| disable_user     | `user_id` (string, required) | Suspend an Atlassian user's access in every directory of the organization |
 | activate_user | `user_id` (string, required) | Reactivate a deactivated Atlassian account |
 | deactivate_user | `user_id` (string, required) | Deactivate a managed Atlassian account across all organizations |
 
-`disable_user` and `enable_user` suspend and restore access to this organization only. `deactivate_user` and `activate_user` act on the whole Atlassian account, blocking or restoring access to every Atlassian app in any organization. They only work for managed accounts (accounts on a domain your organization has verified). For accounts provisioned from an identity provider, including accounts this connector creates through SCIM account provisioning, Atlassian requires deactivating them in the identity provider. For those accounts, use `disable_user` and `enable_user` instead.
+`disable_user` and `enable_user` suspend and restore access to this organization only, in every directory of the organization the user belongs to. `deactivate_user` and `activate_user` act on the whole Atlassian account, blocking or restoring access to every Atlassian app in any organization. They only work for managed accounts (accounts on a domain your organization has verified). For accounts provisioned from an identity provider, including accounts this connector creates through SCIM account provisioning, Atlassian requires deactivating them in the identity provider. For those accounts, use `disable_user` and `enable_user` instead.
+
+While a user is suspended, Atlassian doesn't bill for them. Restoring gives back the roles and group memberships they had before. Because `enable_user` restores access in every directory, it also lifts a suspension an admin applied to just one directory. If Atlassian rejects the action in some directories, the action fails and the error names each of those directories; it's safe to run it again. Both actions need the **API key without scopes** described below, because Atlassian doesn't offer scopes for them.
 
 The two pairs are independent: `activate_user` does not lift an organization suspension, and `enable_user` does not reactivate a deactivated account. To fully restore a user who may be either or both, run `activate_user` and then `enable_user`. In our tests, both succeeded on accounts already in the target state. A user restored with only `activate_user` while still suspended, or with only `enable_user` while still deactivated, can show as enabled in C1 until the next sync but still has no access.
 
