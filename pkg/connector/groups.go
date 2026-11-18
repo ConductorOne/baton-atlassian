@@ -86,17 +86,19 @@ func (b *groupBuilder) Grants(_ context.Context, _ *v2.Resource, _ *pagination.T
 // side (each user's groups) in one paged pass per directory, instead of listing each group's
 // members with the users?groupIds= filter, which times out on very large groups.
 //
-// The first call (empty token) plans the work and spawns independent cursors:
-//   - one "members" cursor per directory, paging users/search with expand=groups;
-//   - one "groups" cursor paging the group list, which spawns a "roles" cursor per group
-//     to page that group's role assignments.
+// The first call (empty token) spawns two independent cursors and returns no grants:
+//   - a "directories" cursor paging the directory list, which spawns a "members" cursor per
+//     directory to page users/search with expand=groups;
+//   - a "groups" cursor paging the group list, which spawns a "roles" cursor per group to page
+//     that group's role assignments.
 //
 // Each token is self-contained, because the SDK may run a cursor on another worker or after
 // a resume.
 const (
-	groupTokenMembers = "members"
-	groupTokenGroups  = "groups"
-	groupTokenRoles   = "roles"
+	groupTokenDirectories = "directories"
+	groupTokenMembers     = "members"
+	groupTokenGroups      = "groups"
+	groupTokenRoles       = "roles"
 )
 
 type groupGrantsToken struct {
@@ -138,7 +140,7 @@ func (b *groupBuilder) GrantsForResourceType(ctx context.Context, resourceTypeID
 	}
 
 	if opts.PageToken.Token == "" {
-		return b.planGroupGrants(ctx)
+		return b.planGroupGrants()
 	}
 
 	var token groupGrantsToken
@@ -147,6 +149,8 @@ func (b *groupBuilder) GrantsForResourceType(ctx context.Context, resourceTypeID
 	}
 
 	switch token.Kind {
+	case groupTokenDirectories:
+		return b.spawnGroupMemberCursors(ctx, token)
 	case groupTokenMembers:
 		return b.groupMemberGrants(ctx, token)
 	case groupTokenGroups:
@@ -158,40 +162,44 @@ func (b *groupBuilder) GrantsForResourceType(ctx context.Context, resourceTypeID
 	}
 }
 
-// planGroupGrants spawns one members cursor per directory and one cursor over the group list.
-// It returns no grants itself.
-func (b *groupBuilder) planGroupGrants(ctx context.Context) ([]*v2.Grant, *resource.SyncOpResults, error) {
-	var tokens []string
-
-	cursor := ""
-	for {
-		directories, next, err := b.client.ListDirectories(ctx, cursor)
-		if err != nil {
-			return nil, nil, fmt.Errorf("baton-atlassian: failed to list directories: %w", err)
-		}
-		for _, directory := range directories {
-			if directory.DirectoryId == "" {
-				return nil, nil, status.Error(codes.Internal, "baton-atlassian: directory list returned an entry without a directory id")
-			}
-			token, err := groupGrantsToken{Kind: groupTokenMembers, DirectoryID: directory.DirectoryId}.encode()
-			if err != nil {
-				return nil, nil, err
-			}
-			tokens = append(tokens, token)
-		}
-		if next == "" {
-			break
-		}
-		cursor = next
+// planGroupGrants spawns the directories cursor and the groups cursor. It returns no grants.
+func (b *groupBuilder) planGroupGrants() ([]*v2.Grant, *resource.SyncOpResults, error) {
+	directoriesToken, err := groupGrantsToken{Kind: groupTokenDirectories}.encode()
+	if err != nil {
+		return nil, nil, err
 	}
-
 	groupsToken, err := groupGrantsToken{Kind: groupTokenGroups}.encode()
 	if err != nil {
 		return nil, nil, err
 	}
-	tokens = append(tokens, groupsToken)
+	return nil, &resource.SyncOpResults{Annotations: enqueueTokens([]string{directoriesToken, groupsToken})}, nil
+}
 
-	return nil, &resource.SyncOpResults{Annotations: enqueueTokens(tokens)}, nil
+// spawnGroupMemberCursors pages the directory list and spawns a members cursor for each
+// directory on the page. It returns no grants itself.
+func (b *groupBuilder) spawnGroupMemberCursors(ctx context.Context, token groupGrantsToken) ([]*v2.Grant, *resource.SyncOpResults, error) {
+	directories, next, err := b.client.ListDirectories(ctx, token.Cursor)
+	if err != nil {
+		return nil, nil, fmt.Errorf("baton-atlassian: failed to list directories: %w", err)
+	}
+
+	tokens := make([]string, 0, len(directories))
+	for _, directory := range directories {
+		if directory.DirectoryId == "" {
+			return nil, nil, status.Error(codes.Internal, "baton-atlassian: directory list returned an entry without a directory id")
+		}
+		membersToken, err := groupGrantsToken{Kind: groupTokenMembers, DirectoryID: directory.DirectoryId}.encode()
+		if err != nil {
+			return nil, nil, err
+		}
+		tokens = append(tokens, membersToken)
+	}
+
+	nextToken, err := token.next(next)
+	if err != nil {
+		return nil, nil, err
+	}
+	return nil, &resource.SyncOpResults{NextPageToken: nextToken, Annotations: enqueueTokens(tokens)}, nil
 }
 
 // groupMemberGrants emits a member grant for every group of every user on one page of a
