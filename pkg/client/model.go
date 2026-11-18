@@ -223,3 +223,39 @@ type APIToken struct {
 		Email string `json:"email"`
 	} `json:"user"`
 }
+
+type Directory struct {
+	DirectoryId string `json:"directoryId"`
+	Name        string `json:"name"`
+}
+
+type DirectoriesResponse struct {
+	Data  []Directory `json:"data"`
+	Links struct {
+		Next string `json:"next"`
+	} `json:"links"`
+}
+
+type UserSearchRequest struct {
+	Limit  int      `json:"limit,omitempty"`
+	Expand []string `json:"expand,omitempty"`
+	Cursor string   `json:"cursor,omitempty"`
+}
+
+// SearchUser is a user returned by users/search. Groups is set only when the request
+// expands "groups", and holds the user's groups in the requested directory.
+type SearchUser struct {
+	AccountId string            `json:"accountId"`
+	Groups    []SearchUserGroup `json:"groups"`
+}
+
+type SearchUserGroup struct {
+	ID string `json:"id"`
+}
+
+type UserSearchResponse struct {
+	Data  []SearchUser `json:"data"`
+	Links struct {
+		Next string `json:"next"`
+	} `json:"links"`
+}

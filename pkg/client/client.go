@@ -18,6 +18,8 @@ const (
 	lifecycleBaseURL = "https://api.atlassian.com"
 
 	usersEP                = "v2/orgs/%s/directories/-/users"
+	usersSearchEP          = "v2/orgs/%s/directories/%s/users/search"
+	directoriesEP          = "v2/orgs/%s/directories"
 	workspacesEP           = "v2/orgs/%s/workspaces"
 	groupsEP               = "v2/orgs/%s/directories/-/groups"
 	usersRoleAssignmentEP  = "v2/orgs/%s/directories/-/users/%s/role-assignments"
@@ -126,25 +128,23 @@ func (c *AtlassianClient) GetOrganization(ctx context.Context) (*Organization, e
 	return &orgResponse.Data, nil
 }
 
-// GetGroupMembers returns a list of users that are members of a specific group.
-func (c *AtlassianClient) GetGroupMembers(ctx context.Context, pageToken, groupID string) ([]User, string, error) {
-	var usersResponse UserResponse
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(usersEP, url.PathEscape(c.config.organizationID)))
+// ListDirectories returns a page of the organization's user directories. GET v2/orgs/{org}/directories.
+// Requires read:directories:admin.
+func (c *AtlassianClient) ListDirectories(ctx context.Context, pageToken string) ([]Directory, string, error) {
+	var directoriesResponse DirectoriesResponse
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(directoriesEP, url.PathEscape(c.config.organizationID)))
 	if err != nil {
 		return nil, "", err
 	}
 
-	reqOpts := []RequestOpt{
-		WithPageSize(maxItemsPerPage),
-		WithQueryParam("groupIds", groupID),
-	}
+	reqOpts := []RequestOpt{WithPageSize(maxItemsPerPage)}
 	if pageToken != "" {
 		reqOpts = append(reqOpts, WithPageToken(pageToken))
 	}
 	_, err = c.doRequest(ctx,
 		http.MethodGet,
 		requestURL,
-		&usersResponse,
+		&directoriesResponse,
 		nil,
 		reqOpts...,
 	)
@@ -152,9 +152,39 @@ func (c *AtlassianClient) GetGroupMembers(ctx context.Context, pageToken, groupI
 		return nil, "", err
 	}
 
-	nextPageToken := usersResponse.Links.Next
+	return directoriesResponse.Data, directoriesResponse.Links.Next, nil
+}
 
-	return usersResponse.Data, nextPageToken, nil
+// SearchUsersWithGroups returns a page of the users in one directory, each with the groups it
+// belongs to in that directory. POST v2/orgs/{org}/directories/{directoryID}/users/search with
+// expand=groups.
+//
+// This reads group membership from the user side, so its cost grows with the number of users
+// rather than with the size of any one group. Listing a very large group's members with the
+// users?groupIds= filter instead can exceed Atlassian's gateway timeout on every attempt.
+func (c *AtlassianClient) SearchUsersWithGroups(ctx context.Context, directoryID, pageToken string) ([]SearchUser, string, error) {
+	var searchResponse UserSearchResponse
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(usersSearchEP, url.PathEscape(c.config.organizationID), url.PathEscape(directoryID)))
+	if err != nil {
+		return nil, "", err
+	}
+
+	body := UserSearchRequest{
+		Limit:  maxItemsPerPage,
+		Expand: []string{"groups"},
+		Cursor: pageToken,
+	}
+	_, err = c.doRequest(ctx,
+		http.MethodPost,
+		requestURL,
+		&searchResponse,
+		body,
+	)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return searchResponse.Data, searchResponse.Links.Next, nil
 }
 
 func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) ([]User, string, error) {

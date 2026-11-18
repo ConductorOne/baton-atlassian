@@ -171,3 +171,12 @@ func ErrorCode(err error) string {
 	}
 	return ""
 }
+
+// groupARIPrefix is the prefix users/search puts on group IDs, e.g.
+// "ari:cloud:identity::group/<uuid>". Group resources are keyed by the bare UUID.
+const groupARIPrefix = "ari:cloud:identity::group/"
+
+// GroupIDFromARI returns the bare group ID, stripping the ARI prefix when present.
+func GroupIDFromARI(id string) string {
+	return strings.TrimPrefix(id, groupARIPrefix)
+}
