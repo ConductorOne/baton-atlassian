@@ -112,7 +112,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:109",
+          "client": "pkg/client/client.go:110",
           "evidence": "vendor spec"
         }
       }
@@ -127,7 +127,7 @@
       "get": {
         "operationId": "getDirectoryUsers",
         "summary": "List directory users",
-        "description": "Called from two client.go sites: ListUsers (client.go:158, no groupIds filter) and GetGroupMembers (client.go:128, sets groupIds to one group ID to list that group's members).",
+        "description": "Called from client.go ListUsers. The connector sends no filters; group membership is read via searchDirectoryUsers with expand=groups instead of this endpoint's groupIds filter.",
         "parameters": [
           {
             "name": "orgId",
@@ -169,20 +169,6 @@
               "minimum": 1,
               "maximum": 100,
               "default": 20
-            }
-          },
-          {
-            "name": "groupIds",
-            "in": "query",
-            "required": false,
-            "description": "Filter to users who are members of these group IDs. Only sent by GetGroupMembers (client.go); ListUsers does not send it.",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "minItems": 1,
-              "maxItems": 10
             }
           }
         ],
@@ -266,7 +252,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:130,160",
+          "client": "pkg/client/client.go:189",
           "evidence": "vendor spec"
         }
       }
@@ -364,7 +350,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/api-access/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:190",
+          "client": "pkg/client/client.go:219",
           "evidence": "vendor spec"
         }
       }
@@ -471,7 +457,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:217",
+          "client": "pkg/client/client.go:246",
           "evidence": "vendor spec"
         }
       }
@@ -600,7 +586,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:245",
+          "client": "pkg/client/client.go:274",
           "evidence": "vendor spec"
         }
       }
@@ -738,7 +724,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:272",
+          "client": "pkg/client/client.go:301",
           "evidence": "vendor spec"
         }
       }
@@ -876,7 +862,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:299",
+          "client": "pkg/client/client.go:328",
           "evidence": "vendor spec"
         }
       }
@@ -983,7 +969,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:327",
+          "client": "pkg/client/client.go:356",
           "evidence": "vendor spec"
         }
       }
@@ -1120,7 +1106,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:352",
+          "client": "pkg/client/client.go:381",
           "evidence": "vendor spec"
         }
       }
@@ -1246,7 +1232,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:378",
+          "client": "pkg/client/client.go:407",
           "evidence": "vendor spec"
         }
       }
@@ -1381,7 +1367,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:398",
+          "client": "pkg/client/client.go:427",
           "evidence": "vendor spec"
         }
       }
@@ -1516,7 +1502,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:422",
+          "client": "pkg/client/client.go:451",
           "evidence": "vendor spec"
         }
       }
@@ -1531,7 +1517,7 @@
       "get": {
         "operationId": "listUserDirectories",
         "summary": "Get the directories a user belongs to",
-        "description": "ListUserDirectoryIDs always sends `accountId`, so the response only lists the directories the user is a member of. The connector reads every page in one call because it backs a single action (disable_user / enable_user), not a sync. Vendor scope: `read:directories:admin`.",
+        "description": "Called from two client.go sites. ListUserDirectoryIDs sends `accountId`, so the response only lists the directories that user is a member of; it reads every page in one call because it backs a single action (disable_user / enable_user), not a sync. ListDirectories sends no `accountId` and lists every directory in the org, one page per call, so the type-scoped group grants can read memberships one directory at a time with searchDirectoryUsers: a new org has one directory, a legacy org can have one per site. Vendor scope: `read:directories:admin`.",
         "parameters": [
           {
             "name": "orgId",
@@ -1546,7 +1532,7 @@
             "name": "accountId",
             "in": "query",
             "required": false,
-            "description": "Atlassian account ID. Vendor: filters the results to only the directories where the specified user is a member. The connector always sends it.",
+            "description": "Filter to the directories this account belongs to. Sent only by ListUserDirectoryIDs; ListDirectories omits it.",
             "schema": {
               "type": "string"
             }
@@ -1633,8 +1619,134 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-11-13",
-          "client": "pkg/client/client.go:449",
+          "client": "pkg/client/client.go:478,132",
           "evidence": "vendor spec"
+        }
+      }
+    },
+    "/v2/orgs/{orgId}/directories/{directoryId}/users/search": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com/admin",
+          "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+        }
+      ],
+      "post": {
+        "operationId": "searchDirectoryUsers",
+        "summary": "Search for users in a directory",
+        "description": "Called from client.go SearchUsersWithGroups, once per directory from getDirectoriesForOrg, with expand=groups. The connector builds group member grants from each user's `groups`, so the cost grows with the number of users rather than with the size of any one group.",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "directoryId",
+            "in": "path",
+            "required": true,
+            "description": "Directory ID from getDirectoriesForOrg. The connector passes each real directory ID, not `-`, because `groups` only lists memberships within the requested directory.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserSearchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization, directory, or user not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
+          "accessed": "2026-11-18",
+          "client": "pkg/client/client.go:164",
+          "evidence": "vendor spec + live response"
         }
       }
     },
@@ -1751,7 +1863,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/rest/api-group-users/#api-v2-orgs-orgid-directories-directoryid-users-accountid-suspend-post",
           "accessed": "2026-11-13",
-          "client": "pkg/client/client.go:498",
+          "client": "pkg/client/client.go:527",
           "evidence": "vendor spec"
         }
       }
@@ -1869,7 +1981,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/rest/api-group-users/#api-v2-orgs-orgid-directories-directoryid-users-accountid-restore-post",
           "accessed": "2026-11-13",
-          "client": "pkg/client/client.go:505",
+          "client": "pkg/client/client.go:534",
           "evidence": "vendor spec"
         }
       }
@@ -1956,7 +2068,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-management/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:527",
+          "client": "pkg/client/client.go:557",
           "evidence": "vendor spec"
         }
       }
@@ -2063,7 +2175,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-disable-post",
           "accessed": "2026-11-05",
-          "client": "pkg/client/client.go:548",
+          "client": "pkg/client/client.go:578",
           "evidence": "docs + live response (204, 400); 401/403/404/409 bodies modeled on deleteUser"
         }
       }
@@ -2164,7 +2276,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-enable-post",
           "accessed": "2026-11-05",
-          "client": "pkg/client/client.go:570",
+          "client": "pkg/client/client.go:600",
           "evidence": "docs + live response (204, 400); 401/403/404/409 bodies modeled on deleteUser"
         }
       }
@@ -2266,11 +2378,13 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-provisioning/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:591",
+          "client": "pkg/client/client.go:621",
           "evidence": "vendor spec"
         }
       }
-    }
+    },
+    "/v1/orgs/{orgId}/directory/users/{accountId}/suspend-access": {},
+    "/v1/orgs/{orgId}/directory/users/{accountId}/restore-access": {}
   },
   "components": {
     "securitySchemes": {
@@ -2652,6 +2766,85 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Directory"
+            }
+          },
+          "links": {
+            "$ref": "#/components/schemas/LinkPageCursor"
+          }
+        }
+      },
+      "UserSearchRequest": {
+        "type": "object",
+        "description": "Subset of vendor MultiDirectoryUserSearchRequest that client.go SearchUsersWithGroups sends. Every page sends `limit` and `expand`, plus `cursor` after the first page; a live check against a test org confirmed later pages accept the full body and keep the expansion.",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "description": "Starting point for the page of results. Set from the previous page's `links.next`; omitted on the first page."
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Results per page. The connector always sends 100 (maxItemsPerPage). Vendor default 50."
+          },
+          "expand": {
+            "type": "array",
+            "uniqueItems": true,
+            "description": "Additional fields to include. The connector always sends `[\"groups\"]`, without which `groups` is omitted from each user.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "platformRoles",
+                "counts.resources",
+                "productAccess",
+                "groups"
+              ]
+            },
+            "default": [
+              "groups"
+            ]
+          }
+        }
+      },
+      "SearchUser": {
+        "type": "object",
+        "description": "Fields client.go reads from vendor MultiDirectoryUser.",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "Unique ID of the user's account."
+          },
+          "groups": {
+            "type": "array",
+            "uniqueItems": true,
+            "description": "The user's group memberships within the requested directory. Returned only when `expand` includes `groups`.",
+            "items": {
+              "$ref": "#/components/schemas/SearchUserGroup"
+            }
+          }
+        }
+      },
+      "SearchUserGroup": {
+        "type": "object",
+        "description": "Fields client.go reads from vendor MultiDirectoryUserGroup.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Group ID. May be returned in ARI form (`ari:cloud:identity::group/<id>`); the connector strips that prefix (client.GroupIDFromARI) to match group resource IDs from getGroups."
+          }
+        }
+      },
+      "UserSearchResponse": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchUser"
             }
           },
           "links": {
