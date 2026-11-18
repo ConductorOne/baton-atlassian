@@ -2,6 +2,7 @@ package connector
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/conductorone/baton-atlassian/pkg/client"
@@ -11,12 +12,8 @@ import (
 	"github.com/conductorone/baton-sdk/pkg/types/entitlement"
 	"github.com/conductorone/baton-sdk/pkg/types/grant"
 	"github.com/conductorone/baton-sdk/pkg/types/resource"
-)
-
-// Pagination phases for group grants.
-const (
-	groupGrantsPhaseMembers         = "members"
-	groupGrantsPhaseRoleAssignments = "role-assignments"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type groupBuilder struct {
@@ -76,81 +73,226 @@ func (b *groupBuilder) Entitlements(_ context.Context, resource *v2.Resource, _ 
 	return groupEntitlements, "", nil, nil
 }
 
-// Grants function will be creating the grants for the Workspaces, Organization, and group memberships.
-//
-// Groups have Roles assigned that gives them permissions on each Workspace (product sites)
-// and on the Organization level (org-admin, site-admin).
-// Additionally, we sync group memberships (users that belong to each group).
-//
-// Pagination is handled in two phases:
-// 1. Members phase: paginate through all group members.
-// 2. Role assignments phase: paginate through all role assignments.
-func (b *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
-	var grantResources []*v2.Grant
+// Grants is never called for groups: the group type carries the TypeScopedGrants annotation,
+// so the syncer calls GrantsForResourceType (below) for the whole type instead. It errors
+// rather than returning nothing, because an empty result would read as every membership being
+// removed.
+func (b *groupBuilder) Grants(_ context.Context, _ *v2.Resource, _ *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
+	return nil, "", nil, status.Error(codes.Unimplemented, "baton-atlassian: group grants are synced type-scoped; use GrantsForResourceType")
+}
 
-	bag := &pagination.Bag{}
-	err := bag.Unmarshal(pToken.Token)
+// Group grants are synced type-scoped: the syncer calls GrantsForResourceType for the whole
+// group type instead of Grants once per group. That lets membership be read from the user
+// side (each user's groups) in one paged pass per directory, instead of listing each group's
+// members with the users?groupIds= filter, which times out on very large groups.
+//
+// The first call (empty token) spawns two independent cursors and returns no grants:
+//   - a "directories" cursor paging the directory list, which spawns a "members" cursor per
+//     directory to page users/search with expand=groups;
+//   - a "groups" cursor paging the group list, which spawns a "roles" cursor per group to page
+//     that group's role assignments.
+//
+// Each token is self-contained, because the SDK may run a cursor on another worker or after
+// a resume.
+const (
+	groupTokenDirectories = "directories"
+	groupTokenMembers     = "members"
+	groupTokenGroups      = "groups"
+	groupTokenRoles       = "roles"
+)
+
+type groupGrantsToken struct {
+	Kind        string `json:"kind"`
+	DirectoryID string `json:"directoryId,omitempty"`
+	GroupID     string `json:"groupId,omitempty"`
+	Cursor      string `json:"cursor,omitempty"`
+}
+
+func (t groupGrantsToken) encode() (string, error) {
+	b, err := json.Marshal(t)
 	if err != nil {
-		return nil, "", nil, err
+		return "", fmt.Errorf("baton-atlassian: failed to encode group grants token: %w", err)
+	}
+	return string(b), nil
+}
+
+// next returns the token for the following page of the same cursor, or "" when done.
+func (t groupGrantsToken) next(cursor string) (string, error) {
+	if cursor == "" {
+		return "", nil
+	}
+	t.Cursor = cursor
+	return t.encode()
+}
+
+func groupResourceID(groupID string) *v2.Resource {
+	return &v2.Resource{
+		Id: &v2.ResourceId{
+			ResourceType: groupResourceType.Id,
+			Resource:     groupID,
+		},
+	}
+}
+
+func (b *groupBuilder) GrantsForResourceType(ctx context.Context, resourceTypeID string, opts resource.SyncOpAttrs) ([]*v2.Grant, *resource.SyncOpResults, error) {
+	if resourceTypeID != groupResourceType.Id {
+		return nil, nil, status.Errorf(codes.InvalidArgument, "baton-atlassian: type-scoped grants requested for unexpected resource type %q", resourceTypeID)
 	}
 
-	groupID := resource.Id.Resource
-
-	if bag.Current() == nil {
-		bag.Push(pagination.PageState{
-			ResourceTypeID: groupGrantsPhaseMembers,
-		})
+	if opts.PageToken.Token == "" {
+		return b.planGroupGrants()
 	}
 
-	currentPhase := bag.Current().ResourceTypeID
-	pageToken := bag.PageToken()
+	var token groupGrantsToken
+	if err := json.Unmarshal([]byte(opts.PageToken.Token), &token); err != nil {
+		return nil, nil, status.Errorf(codes.InvalidArgument, "baton-atlassian: invalid group grants token: %v", err)
+	}
 
-	// Phase 1: Get group members and create membership grants
-	if currentPhase == groupGrantsPhaseMembers {
-		members, membersNextPageToken, err := b.client.GetGroupMembers(ctx, pageToken, groupID)
+	switch token.Kind {
+	case groupTokenDirectories:
+		return b.spawnGroupMemberCursors(ctx, token)
+	case groupTokenMembers:
+		return b.groupMemberGrants(ctx, token)
+	case groupTokenGroups:
+		return b.spawnGroupRoleCursors(ctx, token)
+	case groupTokenRoles:
+		return b.groupRoleGrants(ctx, token)
+	default:
+		return nil, nil, status.Errorf(codes.InvalidArgument, "baton-atlassian: unknown group grants token kind %q", token.Kind)
+	}
+}
+
+// planGroupGrants spawns the directories cursor and the groups cursor. It returns no grants.
+func (b *groupBuilder) planGroupGrants() ([]*v2.Grant, *resource.SyncOpResults, error) {
+	directoriesToken, err := groupGrantsToken{Kind: groupTokenDirectories}.encode()
+	if err != nil {
+		return nil, nil, err
+	}
+	groupsToken, err := groupGrantsToken{Kind: groupTokenGroups}.encode()
+	if err != nil {
+		return nil, nil, err
+	}
+	return nil, &resource.SyncOpResults{Annotations: enqueueTokens([]string{directoriesToken, groupsToken})}, nil
+}
+
+// spawnGroupMemberCursors pages the directory list and spawns a members cursor for each
+// directory on the page. It returns no grants itself.
+func (b *groupBuilder) spawnGroupMemberCursors(ctx context.Context, token groupGrantsToken) ([]*v2.Grant, *resource.SyncOpResults, error) {
+	directories, next, err := b.client.ListDirectories(ctx, token.Cursor)
+	if err != nil {
+		return nil, nil, fmt.Errorf("baton-atlassian: failed to list directories: %w", err)
+	}
+
+	tokens := make([]string, 0, len(directories))
+	for _, directory := range directories {
+		if directory.DirectoryId == "" {
+			return nil, nil, status.Error(codes.Internal, "baton-atlassian: directory list returned an entry without a directory id")
+		}
+		membersToken, err := groupGrantsToken{Kind: groupTokenMembers, DirectoryID: directory.DirectoryId}.encode()
 		if err != nil {
-			return nil, "", nil, err
+			return nil, nil, err
 		}
-
-		for _, member := range members {
-			userResource := &v2.Resource{
-				Id: &v2.ResourceId{
-					ResourceType: userResourceType.Id,
-					Resource:     member.AccountId,
-				},
-			}
-			grantResources = append(
-				grantResources,
-				grant.NewGrant(resource, "member", userResource),
-			)
-		}
-
-		// If there are more members to paginate, continue with members phase
-		if membersNextPageToken != "" {
-			err = bag.Next(membersNextPageToken)
-			if err != nil {
-				return nil, "", nil, err
-			}
-			nextPageToken, err := bag.Marshal()
-			if err != nil {
-				return nil, "", nil, err
-			}
-			return grantResources, nextPageToken, nil, nil
-		}
-
-		// Members phase complete, transition to role assignments phase
-		bag.Pop()
-		bag.Push(pagination.PageState{
-			ResourceTypeID: groupGrantsPhaseRoleAssignments,
-		})
-		pageToken = "" // Reset page token for new phase.
+		tokens = append(tokens, membersToken)
 	}
 
-	roleAssignments, roleAssignmentsNextPageToken, err := b.client.GetGroupRoleAssignments(ctx, pageToken, groupID)
+	nextToken, err := token.next(next)
 	if err != nil {
-		return nil, "", nil, err
+		return nil, nil, err
+	}
+	return nil, &resource.SyncOpResults{NextPageToken: nextToken, Annotations: enqueueTokens(tokens)}, nil
+}
+
+// groupMemberGrants emits a member grant for every group of every user on one page of a
+// directory's users.
+func (b *groupBuilder) groupMemberGrants(ctx context.Context, token groupGrantsToken) ([]*v2.Grant, *resource.SyncOpResults, error) {
+	if token.DirectoryID == "" {
+		return nil, nil, status.Error(codes.InvalidArgument, "baton-atlassian: members token is missing a directory id")
 	}
 
+	users, next, err := b.client.SearchUsersWithGroups(ctx, token.DirectoryID, token.Cursor)
+	if err != nil {
+		return nil, nil, fmt.Errorf("baton-atlassian: failed to search users with groups in directory %s: %w", token.DirectoryID, err)
+	}
+
+	var grants []*v2.Grant
+	for _, user := range users {
+		userResource := &v2.Resource{
+			Id: &v2.ResourceId{
+				ResourceType: userResourceType.Id,
+				Resource:     user.AccountId,
+			},
+		}
+		for _, group := range user.Groups {
+			groupID := client.GroupIDFromARI(group.ID)
+			if groupID == "" {
+				continue
+			}
+			grants = append(grants, grant.NewGrant(groupResourceID(groupID), "member", userResource))
+		}
+	}
+
+	nextToken, err := token.next(next)
+	if err != nil {
+		return nil, nil, err
+	}
+	return grants, &resource.SyncOpResults{NextPageToken: nextToken}, nil
+}
+
+// spawnGroupRoleCursors pages the group list and spawns a roles cursor for each group on the
+// page. It returns no grants itself.
+func (b *groupBuilder) spawnGroupRoleCursors(ctx context.Context, token groupGrantsToken) ([]*v2.Grant, *resource.SyncOpResults, error) {
+	groups, next, err := b.client.ListGroups(ctx, token.Cursor)
+	if err != nil {
+		return nil, nil, fmt.Errorf("baton-atlassian: failed to list groups: %w", err)
+	}
+
+	tokens := make([]string, 0, len(groups))
+	for _, group := range groups {
+		roleToken, err := groupGrantsToken{Kind: groupTokenRoles, GroupID: group.ID}.encode()
+		if err != nil {
+			return nil, nil, err
+		}
+		tokens = append(tokens, roleToken)
+	}
+
+	nextToken, err := token.next(next)
+	if err != nil {
+		return nil, nil, err
+	}
+	return nil, &resource.SyncOpResults{NextPageToken: nextToken, Annotations: enqueueTokens(tokens)}, nil
+}
+
+// groupRoleGrants emits the workspace role grants for one page of a group's role assignments.
+func (b *groupBuilder) groupRoleGrants(ctx context.Context, token groupGrantsToken) ([]*v2.Grant, *resource.SyncOpResults, error) {
+	if token.GroupID == "" {
+		return nil, nil, status.Error(codes.InvalidArgument, "baton-atlassian: roles token is missing a group id")
+	}
+
+	roleAssignments, next, err := b.client.GetGroupRoleAssignments(ctx, token.Cursor, token.GroupID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("baton-atlassian: failed to get role assignments for group %s: %w", token.GroupID, err)
+	}
+
+	grants := groupRoleAssignmentGrants(groupResourceID(token.GroupID), roleAssignments)
+
+	nextToken, err := token.next(next)
+	if err != nil {
+		return nil, nil, err
+	}
+	return grants, &resource.SyncOpResults{NextPageToken: nextToken}, nil
+}
+
+func enqueueTokens(tokens []string) annotations.Annotations {
+	if len(tokens) == 0 {
+		return nil
+	}
+	return annotations.New(v2.EnqueuePageTokens_builder{PageTokens: tokens}.Build())
+}
+
+// groupRoleAssignmentGrants turns a group's role assignments into workspace role grants
+// whose principal is the group.
+func groupRoleAssignmentGrants(group *v2.Resource, roleAssignments []client.RoleAssignment) []*v2.Grant {
+	var grants []*v2.Grant
 	for _, roleAssignment := range roleAssignments {
 		// We only want to sync the role assignments for the Atlassian Products (Workspaces).
 		// The ignored scopes refers to:
@@ -165,7 +307,6 @@ func (b *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken
 			continue
 		}
 
-		// Handle workspace roles
 		workspaceResource := &v2.Resource{
 			Id: &v2.ResourceId{
 				ResourceType: workspaceResourceType.Id,
@@ -175,27 +316,10 @@ func (b *groupBuilder) Grants(ctx context.Context, resource *v2.Resource, pToken
 
 		for _, role := range roleAssignment.Roles {
 			entitlementID := fmt.Sprintf("role:%s", role)
-			grantResources = append(
-				grantResources,
-				grant.NewGrant(workspaceResource, entitlementID, resource),
-			)
+			grants = append(grants, grant.NewGrant(workspaceResource, entitlementID, group))
 		}
 	}
-
-	// If there are more role assignments to paginate, continue
-	if roleAssignmentsNextPageToken != "" {
-		err = bag.Next(roleAssignmentsNextPageToken)
-		if err != nil {
-			return nil, "", nil, err
-		}
-		nextPageToken, err := bag.Marshal()
-		if err != nil {
-			return nil, "", nil, err
-		}
-		return grantResources, nextPageToken, nil, nil
-	}
-
-	return grantResources, "", nil, nil
+	return grants
 }
 
 func (b *groupBuilder) Grant(ctx context.Context, principal *v2.Resource, entitlement *v2.Entitlement) (annotations.Annotations, error) {
