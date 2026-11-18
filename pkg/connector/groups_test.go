@@ -17,15 +17,22 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// fakeAtlassian serves the endpoints the type-scoped group grants use. Directory d1 pages its
-// users across two search pages; user u1 is in both directories, with a different group in
-// each. Group IDs come back in both bare and ARI form, as users/search returns them.
+// fakeAtlassian serves the endpoints the type-scoped group grants use. The directory list
+// spans two pages, one directory each. Directory d1 pages its users across two search pages;
+// user u1 is in both directories, with a different group in each. Group IDs come back in both bare and ARI form, as users/search returns them.
 func fakeAtlassian(t *testing.T) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /v2/orgs/org/directories", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = io.WriteString(w, `{"data":[{"directoryId":"d1","name":"one"},{"directoryId":"d2","name":"two"}],"links":{}}`)
+		switch r.URL.Query().Get("cursor") {
+		case "":
+			_, _ = io.WriteString(w, `{"data":[{"directoryId":"d1","name":"one"}],"links":{"next":"directories-page2"}}`)
+		case "directories-page2":
+			_, _ = io.WriteString(w, `{"data":[{"directoryId":"d2","name":"two"}],"links":{}}`)
+		default:
+			t.Errorf("unexpected directories cursor %q", r.URL.Query().Get("cursor"))
+		}
 	})
 
 	mux.HandleFunc("POST /v2/orgs/org/directories/{dir}/users/search", func(w http.ResponseWriter, r *http.Request) {
