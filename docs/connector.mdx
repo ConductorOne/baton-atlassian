@@ -61,7 +61,7 @@ Connector actions are custom capabilities that extend C1 automations with app-sp
 
 While a user is suspended, Atlassian doesn't bill for them. Restoring gives back the roles and group memberships they had before. Because `enable_user` restores access in every directory, it also lifts a suspension an admin applied to just one directory. If Atlassian rejects the action in some directories, the action fails and the error names each of those directories; it's safe to run it again. Both actions need the **API key without scopes** described below, because Atlassian doesn't offer scopes for them.
 
-The two pairs are independent: `activate_user` does not lift an organization suspension, and `enable_user` does not reactivate a deactivated account. To fully restore a user who may be either or both, run `activate_user` and then `enable_user`. In our tests, both succeeded on accounts already in the target state. A user restored with only `activate_user` while still suspended, or with only `enable_user` while still deactivated, can show as enabled in C1 until the next sync but still has no access.
+The two pairs are independent: `activate_user` does not lift an organization suspension, and `enable_user` does not reactivate a deactivated account. To fully restore a user who may be either or both, run `activate_user` and then `enable_user`. A user restored with only `activate_user` while still suspended, or with only `enable_user` while still deactivated, can show as enabled in C1 until the next sync but still has no access.
 
 Neither pair restores an account pending deletion (`for_deletion`): `activate_user` fails with a 409. To keep that account, cancel its deletion in Atlassian within the 14-day grace period.
 

@@ -211,7 +211,7 @@ func (c *Connector) applyToUserDirectories(
 	)
 	for _, directoryID := range directoryIDs {
 		if err := ctx.Err(); err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("baton-atlassian: %s user %s interrupted: %w", verb, userID, err)
 		}
 
 		l.Debug("applying user action in directory",
@@ -230,7 +230,7 @@ func (c *Connector) applyToUserDirectories(
 			verb, userID, len(failures), len(directoryIDs), strings.Join(failures, "; "), firstErr)
 	}
 
-	l.Info("user action applied in every directory",
+	l.Debug("user action applied in every directory",
 		zap.String("action", verb), zap.String("user_id", userID), zap.Int("directories", len(directoryIDs)))
 
 	return actions.NewReturnValues(true), nil, nil

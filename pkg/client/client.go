@@ -506,6 +506,7 @@ func (c *AtlassianClient) RestoreUserInDirectory(ctx context.Context, directoryI
 	return c.postUserDirectoryAction(ctx, userDirectoryRestoreEP, directoryID, accountID)
 }
 
+// postUserDirectoryAction sends a body-less POST to v2/orgs/{org}/directories/{directoryID}/users/{accountID}/{suspend|restore}.
 func (c *AtlassianClient) postUserDirectoryAction(ctx context.Context, endpoint, directoryID, accountID string) error {
 	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(endpoint,
 		url.PathEscape(c.config.organizationID), url.PathEscape(directoryID), url.PathEscape(accountID)))
