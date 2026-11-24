@@ -262,3 +262,8 @@ type UserSearchResponse struct {
 		Next string `json:"next"`
 	} `json:"links"`
 }
+
+type GroupSearchRequest struct {
+	Limit  int    `json:"limit,omitempty"`
+	Cursor string `json:"cursor,omitempty"`
+}

@@ -112,7 +112,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:110",
+          "client": "pkg/client/client.go:111",
           "evidence": "vendor spec"
         }
       }
@@ -252,7 +252,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:189",
+          "client": "pkg/client/client.go:219",
           "evidence": "vendor spec"
         }
       }
@@ -350,7 +350,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/api-access/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:219",
+          "client": "pkg/client/client.go:249",
           "evidence": "vendor spec"
         }
       }
@@ -457,7 +457,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:246",
+          "client": "pkg/client/client.go:276",
           "evidence": "vendor spec"
         }
       }
@@ -472,6 +472,8 @@
       "get": {
         "operationId": "getGroups",
         "summary": "List groups",
+        "description": "Called from client.go ListGroups, which group List() uses. Deprecated by the vendor: stops working after 2027-06-30; the replacement is searchGroups, which the type-scoped group grants already use.",
+        "deprecated": true,
         "parameters": [
           {
             "name": "orgId",
@@ -586,8 +588,137 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:274",
+          "client": "pkg/client/client.go:304",
           "evidence": "vendor spec"
+        }
+      }
+    },
+    "/v2/orgs/{orgId}/directories/{directoryId}/groups/search": {
+      "servers": [
+        {
+          "url": "https://api.atlassian.com/admin",
+          "description": "Atlassian admin API. Used for directory (users/groups), role-assignment, workspace, and API-access-token endpoints."
+        }
+      ],
+      "post": {
+        "operationId": "searchGroups",
+        "summary": "Search for groups in an organization",
+        "description": "Called from client.go SearchGroups, which the type-scoped group grants use to page every group and spawn a role-assignments cursor per group. Replaces the deprecated getGroups for that path; the connector sends no filters, so it returns the same groups as getGroups.",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "description": "Atlassian organization ID. From connector config (`organization-id` / `BATON_ORGANIZATION_ID`).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "directoryId",
+            "in": "path",
+            "required": true,
+            "description": "Directory ID. The connector always passes the literal `-`, which per the vendor's `directoryIdParam` description means \"all directories the requestor has permission to manage\".",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "-"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupSearchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization, directory, or user not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminErrors"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "orgApiKey": []
+          }
+        ],
+        "x-source": {
+          "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
+          "accessed": "2026-11-24",
+          "client": "pkg/client/client.go:195",
+          "evidence": "vendor spec + live response"
         }
       }
     },
@@ -724,7 +855,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:301",
+          "client": "pkg/client/client.go:331",
           "evidence": "vendor spec"
         }
       }
@@ -862,7 +993,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:328",
+          "client": "pkg/client/client.go:358",
           "evidence": "vendor spec"
         }
       }
@@ -969,7 +1100,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:356",
+          "client": "pkg/client/client.go:386",
           "evidence": "vendor spec"
         }
       }
@@ -1106,7 +1237,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:381",
+          "client": "pkg/client/client.go:411",
           "evidence": "vendor spec"
         }
       }
@@ -1232,7 +1363,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:407",
+          "client": "pkg/client/client.go:437",
           "evidence": "vendor spec"
         }
       }
@@ -1367,7 +1498,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:427",
+          "client": "pkg/client/client.go:457",
           "evidence": "vendor spec"
         }
       }
@@ -1502,7 +1633,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:451",
+          "client": "pkg/client/client.go:481",
           "evidence": "vendor spec"
         }
       }
@@ -1619,7 +1750,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-11-13",
-          "client": "pkg/client/client.go:478,132",
+          "client": "pkg/client/client.go:508,133",
           "evidence": "vendor spec"
         }
       }
@@ -1745,7 +1876,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/swagger.v3.json",
           "accessed": "2026-11-18",
-          "client": "pkg/client/client.go:164",
+          "client": "pkg/client/client.go:165",
           "evidence": "vendor spec + live response"
         }
       }
@@ -1863,7 +1994,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/rest/api-group-users/#api-v2-orgs-orgid-directories-directoryid-users-accountid-suspend-post",
           "accessed": "2026-11-13",
-          "client": "pkg/client/client.go:527",
+          "client": "pkg/client/client.go:557",
           "evidence": "vendor spec"
         }
       }
@@ -1981,7 +2112,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/organization/rest/api-group-users/#api-v2-orgs-orgid-directories-directoryid-users-accountid-restore-post",
           "accessed": "2026-11-13",
-          "client": "pkg/client/client.go:534",
+          "client": "pkg/client/client.go:564",
           "evidence": "vendor spec"
         }
       }
@@ -2068,7 +2199,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-management/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:557",
+          "client": "pkg/client/client.go:587",
           "evidence": "vendor spec"
         }
       }
@@ -2175,7 +2306,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-disable-post",
           "accessed": "2026-11-05",
-          "client": "pkg/client/client.go:578",
+          "client": "pkg/client/client.go:608",
           "evidence": "docs + live response (204, 400); 401/403/404/409 bodies modeled on deleteUser"
         }
       }
@@ -2276,7 +2407,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-management/rest/api-group-lifecycle/#api-users-account-id-manage-lifecycle-enable-post",
           "accessed": "2026-11-05",
-          "client": "pkg/client/client.go:600",
+          "client": "pkg/client/client.go:630",
           "evidence": "docs + live response (204, 400); 401/403/404/409 bodies modeled on deleteUser"
         }
       }
@@ -2378,7 +2509,7 @@
         "x-source": {
           "url": "https://developer.atlassian.com/cloud/admin/user-provisioning/swagger.v3.json",
           "accessed": "2026-10-05",
-          "client": "pkg/client/client.go:621",
+          "client": "pkg/client/client.go:651",
           "evidence": "vendor spec"
         }
       }
@@ -2900,6 +3031,23 @@
           },
           "links": {
             "$ref": "#/components/schemas/LinkPageCursor"
+          }
+        }
+      },
+      "GroupSearchRequest": {
+        "type": "object",
+        "description": "Subset of vendor MultiDirectoryGroupSearchRequest that client.go SearchGroups sends: `limit` on every page, plus `cursor` after the first. No filters are sent.",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "description": "Starting point for the page of results. Set from the previous page's `links.next`; omitted on the first page."
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Results per page. The connector always sends 100 (maxItemsPerPage). Vendor default 20."
           }
         }
       },
