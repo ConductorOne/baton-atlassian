@@ -1545,7 +1545,7 @@
           {
             "name": "accountId",
             "in": "query",
-            "required": true,
+            "required": false,
             "description": "Atlassian account ID. Vendor: filters the results to only the directories where the specified user is a member. The connector always sends it.",
             "schema": {
               "type": "string"
