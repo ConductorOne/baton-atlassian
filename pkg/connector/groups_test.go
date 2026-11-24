@@ -59,14 +59,22 @@ func fakeAtlassian(t *testing.T) *httptest.Server {
 		}
 	})
 
-	mux.HandleFunc("GET /v2/orgs/org/directories/-/groups", func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Query().Get("cursor") {
+	mux.HandleFunc("POST /v2/orgs/org/directories/-/groups/search", func(w http.ResponseWriter, r *http.Request) {
+		var body client.GroupSearchRequest
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode group search body: %v", err)
+		}
+		if body.Limit != 100 {
+			t.Errorf("group search limit = %d, want 100", body.Limit)
+		}
+		switch body.Cursor {
 		case "":
-			_, _ = io.WriteString(w, `{"data":[{"id":"g1","name":"one"},{"id":"g2","name":"two"}],"links":{"next":"groups-page2"}}`)
+			_, _ = io.WriteString(w, `{"data":[{"id":"g1","name":"one"},{"id":"ari:cloud:identity::group/g2","name":"two"}],"links":{"next":"groups-page2"}}`)
 		case "groups-page2":
 			_, _ = io.WriteString(w, `{"data":[{"id":"g3","name":"three"}],"links":{}}`)
 		default:
-			t.Errorf("unexpected groups cursor %q", r.URL.Query().Get("cursor"))
+			t.Errorf("unexpected group search cursor %q", body.Cursor)
+			w.WriteHeader(http.StatusBadRequest)
 		}
 	})
 
@@ -79,6 +87,8 @@ func fakeAtlassian(t *testing.T) *httptest.Server {
 			],"links":{"next":"g1-roles2"}}`)
 		case group == "g1" && cursor == "g1-roles2":
 			_, _ = io.WriteString(w, `{"data":[{"resourceId":"ws2","resourceOwner":"confluence","roles":["atlassian/admin","atlassian/user"]}],"links":{}}`)
+		case group == "g2" && cursor == "":
+			_, _ = io.WriteString(w, `{"data":[{"resourceId":"ws3","resourceOwner":"jira","roles":["atlassian/user"]}],"links":{}}`)
 		default:
 			_, _ = io.WriteString(w, `{"data":[],"links":{}}`)
 		}
@@ -151,6 +161,7 @@ func TestGroupGrantsForResourceType(t *testing.T) {
 		"workspace:ws1:role:atlassian/user <- group:g1",
 		"workspace:ws2:role:atlassian/admin <- group:g1",
 		"workspace:ws2:role:atlassian/user <- group:g1",
+		"workspace:ws3:role:atlassian/user <- group:g2",
 	}
 	sort.Strings(want)
 

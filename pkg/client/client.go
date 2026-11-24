@@ -20,6 +20,7 @@ const (
 	usersEP                = "v2/orgs/%s/directories/-/users"
 	usersSearchEP          = "v2/orgs/%s/directories/%s/users/search"
 	directoriesEP          = "v2/orgs/%s/directories"
+	groupsSearchEP         = "v2/orgs/%s/directories/-/groups/search"
 	workspacesEP           = "v2/orgs/%s/workspaces"
 	groupsEP               = "v2/orgs/%s/directories/-/groups"
 	usersRoleAssignmentEP  = "v2/orgs/%s/directories/-/users/%s/role-assignments"
@@ -185,6 +186,35 @@ func (c *AtlassianClient) SearchUsersWithGroups(ctx context.Context, directoryID
 	}
 
 	return searchResponse.Data, searchResponse.Links.Next, nil
+}
+
+// SearchGroups returns a page of the groups in every directory the API key can manage.
+// POST v2/orgs/{org}/directories/-/groups/search.
+//
+// It replaces the GET groups list, which Atlassian deprecated (it stops working after
+// 2027-06-30). Group IDs may come back in ARI form; GroupIDFromARI strips that prefix.
+func (c *AtlassianClient) SearchGroups(ctx context.Context, pageToken string) ([]Group, string, error) {
+	var groupsResponse GroupResponse
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupsSearchEP, url.PathEscape(c.config.organizationID)))
+	if err != nil {
+		return nil, "", err
+	}
+
+	body := GroupSearchRequest{
+		Limit:  maxItemsPerPage,
+		Cursor: pageToken,
+	}
+	_, err = c.doRequest(ctx,
+		http.MethodPost,
+		requestURL,
+		&groupsResponse,
+		body,
+	)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return groupsResponse.Data, groupsResponse.Links.Next, nil
 }
 
 func (c *AtlassianClient) ListUsers(ctx context.Context, pageToken string) ([]User, string, error) {

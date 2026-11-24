@@ -241,14 +241,18 @@ func (b *groupBuilder) groupMemberGrants(ctx context.Context, token groupGrantsT
 // spawnGroupRoleCursors pages the group list and spawns a roles cursor for each group on the
 // page. It returns no grants itself.
 func (b *groupBuilder) spawnGroupRoleCursors(ctx context.Context, token groupGrantsToken) ([]*v2.Grant, *resource.SyncOpResults, error) {
-	groups, next, err := b.client.ListGroups(ctx, token.Cursor)
+	groups, next, err := b.client.SearchGroups(ctx, token.Cursor)
 	if err != nil {
-		return nil, nil, fmt.Errorf("baton-atlassian: failed to list groups: %w", err)
+		return nil, nil, fmt.Errorf("baton-atlassian: failed to search groups: %w", err)
 	}
 
 	tokens := make([]string, 0, len(groups))
 	for _, group := range groups {
-		roleToken, err := groupGrantsToken{Kind: groupTokenRoles, GroupID: group.ID}.encode()
+		groupID := client.GroupIDFromARI(group.ID)
+		if groupID == "" {
+			return nil, nil, status.Error(codes.Internal, "baton-atlassian: group search returned an entry without a group id")
+		}
+		roleToken, err := groupGrantsToken{Kind: groupTokenRoles, GroupID: groupID}.encode()
 		if err != nil {
 			return nil, nil, err
 		}
