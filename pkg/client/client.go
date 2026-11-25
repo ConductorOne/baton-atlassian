@@ -25,12 +25,12 @@ const (
 	groupDetailEP          = "v2/orgs/%s/directories/-/groups/%s"
 	groupMembershipsEP     = "v2/orgs/%s/directories/%s/groups/%s/memberships"
 	groupMembershipEP      = "v2/orgs/%s/directories/%s/groups/%s/memberships/%s"
+	directoriesEP          = "v2/orgs/%s/directories"
+	userDirectorySuspendEP = "v2/orgs/%s/directories/%s/users/%s/suspend"
+	userDirectoryRestoreEP = "v2/orgs/%s/directories/%s/users/%s/restore"
 
 	userAssignRolesEP = "v1/orgs/%s/users/%s/roles/assign"
 	userRevokeRolesEP = "v1/orgs/%s/users/%s/roles/revoke"
-	// Note: suspend/restore access endpoints cannot be used on organization administrators (returns 400 error).
-	userSuspendAccessEP = "v1/orgs/%s/directory/users/%s/suspend-access"
-	userRestoreAccessEP = "v1/orgs/%s/directory/users/%s/restore-access"
 
 	userLifecycleDeleteEP  = "users/%s/manage/lifecycle/delete"
 	userLifecycleDisableEP = "users/%s/manage/lifecycle/disable"
@@ -443,29 +443,73 @@ func (c *AtlassianClient) RevokeRoleFromUser(ctx context.Context, userID, worksp
 	return nil
 }
 
-// https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-suspend-access-post
-func (c *AtlassianClient) DisableUser(ctx context.Context, accountID string) error {
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(userSuspendAccessEP, url.PathEscape(c.config.organizationID), url.PathEscape(accountID)))
+// ListUserDirectoryIDs returns the IDs of every directory in the organization the user belongs to.
+// It collects all pages because this backs a single action call, not a sync.
+// https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v2-orgs-orgid-directories-get
+func (c *AtlassianClient) ListUserDirectoryIDs(ctx context.Context, accountID string) ([]string, error) {
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(directoriesEP, url.PathEscape(c.config.organizationID)))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	_, err = c.doRequest(ctx,
-		http.MethodPost,
-		requestURL,
-		nil,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
+	var directoryIDs []string
+	seenCursors := make(map[string]struct{})
+	cursor := ""
+	for {
+		var directoriesResponse DirectoriesResponse
+		reqOpts := []RequestOpt{
+			WithPageSize(maxItemsPerPage),
+			WithQueryParam("accountId", accountID),
+		}
+		if cursor != "" {
+			reqOpts = append(reqOpts, WithPageToken(cursor))
+		}
+		_, err = c.doRequest(ctx,
+			http.MethodGet,
+			requestURL,
+			&directoriesResponse,
+			nil,
+			reqOpts...,
+		)
+		if err != nil {
+			return nil, err
+		}
 
-	return nil
+		for _, directory := range directoriesResponse.Data {
+			if directory.DirectoryId != "" {
+				directoryIDs = append(directoryIDs, directory.DirectoryId)
+			}
+		}
+
+		cursor = directoriesResponse.Links.Next
+		if cursor == "" {
+			return directoryIDs, nil
+		}
+		if _, seen := seenCursors[cursor]; seen {
+			return nil, status.Errorf(codes.Internal, "directories response repeated cursor %q", cursor)
+		}
+		seenCursors[cursor] = struct{}{}
+	}
 }
 
-// https://developer.atlassian.com/cloud/admin/organization/rest/api-group-directory/#api-v1-orgs-orgid-directory-users-accountid-restore-access-post
-func (c *AtlassianClient) EnableUser(ctx context.Context, accountID string) error {
-	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(userRestoreAccessEP, url.PathEscape(c.config.organizationID), url.PathEscape(accountID)))
+// SuspendUserInDirectory suspends a user's access in one directory. Requires an unscoped organization API key,
+// since Atlassian offers no scope for this endpoint.
+// https://developer.atlassian.com/cloud/admin/organization/rest/api-group-users/#api-v2-orgs-orgid-directories-directoryid-users-accountid-suspend-post
+func (c *AtlassianClient) SuspendUserInDirectory(ctx context.Context, directoryID, accountID string) error {
+	return c.postUserDirectoryAction(ctx, userDirectorySuspendEP, directoryID, accountID)
+}
+
+// RestoreUserInDirectory restores a user's access in one directory. Requires an unscoped organization API key,
+// since Atlassian offers no scope for this endpoint.
+// https://developer.atlassian.com/cloud/admin/organization/rest/api-group-users/#api-v2-orgs-orgid-directories-directoryid-users-accountid-restore-post
+func (c *AtlassianClient) RestoreUserInDirectory(ctx context.Context, directoryID, accountID string) error {
+	return c.postUserDirectoryAction(ctx, userDirectoryRestoreEP, directoryID, accountID)
+}
+
+// postUserDirectoryAction sends a body-less POST to v2/orgs/{org}/directories/{directoryID}/users/{accountID}/{suspend|restore}.
+func (c *AtlassianClient) postUserDirectoryAction(ctx context.Context, endpoint, directoryID, accountID string) error {
+	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(endpoint,
+		url.PathEscape(c.config.organizationID), url.PathEscape(directoryID), url.PathEscape(accountID)))
 	if err != nil {
 		return err
 	}
@@ -476,11 +520,7 @@ func (c *AtlassianClient) EnableUser(ctx context.Context, accountID string) erro
 		nil,
 		nil,
 	)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // DeleteUser deletes a managed account after Atlassian's 14-day grace period. Requires an unscoped organization API key.
