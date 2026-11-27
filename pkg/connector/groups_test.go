@@ -3,6 +3,7 @@ package connector
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -195,6 +196,54 @@ func TestGroupGrantsForResourceTypeRejectsBadTokens(t *testing.T) {
 				t.Errorf("code = %v, want InvalidArgument (err: %v)", status.Code(err), err)
 			}
 		})
+	}
+}
+
+// TestGroupGrantsForResourceTypeAPIErrors checks that an API error on each endpoint the
+// type-scoped group grants call is returned with its gRPC code and no grants, never turned
+// into an empty page, which a full sync would read as every grant being removed.
+func TestGroupGrantsForResourceTypeAPIErrors(t *testing.T) {
+	endpoints := []struct {
+		name  string
+		input string
+	}{
+		{name: "directories", input: `{"kind":"directories"}`},
+		{name: "users search", input: `{"kind":"members","directoryId":"d1"}`},
+		{name: "groups search", input: `{"kind":"groups"}`},
+	}
+	statuses := []struct {
+		httpStatus int
+		want       codes.Code
+	}{
+		{httpStatus: http.StatusForbidden, want: codes.PermissionDenied},
+		{httpStatus: http.StatusNotFound, want: codes.NotFound},
+		{httpStatus: http.StatusTooManyRequests, want: codes.Unavailable},
+	}
+
+	for _, ep := range endpoints {
+		for _, st := range statuses {
+			t.Run(fmt.Sprintf("%s %d", ep.name, st.httpStatus), func(t *testing.T) {
+				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(st.httpStatus)
+					_, _ = io.WriteString(w, `{"errors":[{"title":"error"}]}`)
+				}))
+				defer srv.Close()
+
+				c, err := client.New(context.Background(), client.WithAccessToken("token"), client.WithOrganizationID("org"), client.WithBaseURL(srv.URL))
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				grants, res, err := newGroupBuilder(c).GrantsForResourceType(context.Background(), groupResourceType.Id, resource.SyncOpAttrs{PageToken: pagination.Token{Token: ep.input}})
+				if status.Code(err) != st.want {
+					t.Fatalf("code = %v, want %v (err: %v)", status.Code(err), st.want, err)
+				}
+				if len(grants) != 0 || res != nil {
+					t.Errorf("got %d grants and results %v on error, want none", len(grants), res)
+				}
+			})
+		}
 	}
 }
 

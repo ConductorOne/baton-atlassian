@@ -127,7 +127,8 @@
       "get": {
         "operationId": "getDirectoryUsers",
         "summary": "List directory users",
-        "description": "Called from client.go ListUsers. The connector sends no filters; group membership is read via searchDirectoryUsers with expand=groups instead of this endpoint's groupIds filter.",
+        "description": "Called from client.go ListUsers, which user List() uses. The connector sends no filters; group membership is read via searchDirectoryUsers with expand=groups instead of this endpoint's groupIds filter. Deprecated by the vendor: stops working after 2027-06-30; the replacement is searchDirectoryUsers. ListUsers has not been migrated yet.",
+        "deprecated": true,
         "parameters": [
           {
             "name": "orgId",
