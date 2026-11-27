@@ -130,6 +130,9 @@ func (c *AtlassianClient) GetOrganization(ctx context.Context) (*Organization, e
 
 // ListDirectories returns a page of the organization's user directories. GET v2/orgs/{org}/directories.
 // Requires read:directories:admin.
+//
+// Atlassian documents no 404 for this endpoint, so a 404 never means a missing record; callers
+// listing grants must not skip it as NotFound.
 func (c *AtlassianClient) ListDirectories(ctx context.Context, pageToken string) ([]Directory, string, error) {
 	var directoriesResponse DirectoriesResponse
 	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(directoriesEP, url.PathEscape(c.config.organizationID)))
@@ -162,6 +165,10 @@ func (c *AtlassianClient) ListDirectories(ctx context.Context, pageToken string)
 // This reads group membership from the user side, so its cost grows with the number of users
 // rather than with the size of any one group. Listing a very large group's members with the
 // users?groupIds= filter instead can exceed Atlassian's gateway timeout on every attempt.
+//
+// Atlassian documents its 404 as "We couldn't find the organization or directory". An unknown
+// organization is never a legitimate skip, and in a single-directory org a skipped directory
+// drops every membership, so callers listing grants must not skip it as NotFound.
 func (c *AtlassianClient) SearchUsersWithGroups(ctx context.Context, directoryID, pageToken string) ([]SearchUser, string, error) {
 	var searchResponse UserSearchResponse
 	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(usersSearchEP, url.PathEscape(c.config.organizationID), url.PathEscape(directoryID)))
@@ -192,6 +199,10 @@ func (c *AtlassianClient) SearchUsersWithGroups(ctx context.Context, directoryID
 //
 // It replaces the GET groups list, which Atlassian deprecated (it stops working after
 // 2027-06-30). Group IDs may come back in ARI form; GroupIDFromARI strips that prefix.
+//
+// Atlassian documents its 404 as "We couldn't find the organization or directory", which is
+// never a legitimate skip for an org-wide list, so callers listing grants must not skip it as
+// NotFound.
 func (c *AtlassianClient) SearchGroups(ctx context.Context, pageToken string) ([]Group, string, error) {
 	var groupsResponse GroupResponse
 	requestURL, err := url.JoinPath(c.getBaseURL(), fmt.Sprintf(groupsSearchEP, url.PathEscape(c.config.organizationID)))

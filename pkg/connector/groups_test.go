@@ -201,35 +201,29 @@ func TestGroupGrantsForResourceTypeRejectsBadTokens(t *testing.T) {
 
 // TestGroupGrantsForResourceTypeAPIErrors checks that an API error on each endpoint the
 // type-scoped group grants call is returned with its gRPC code and no grants, never turned
-// into an empty page, which a full sync would read as every grant being removed. A 404 on the
-// org-wide lists (directories, groups search) must become Internal, since the SDK skips a
-// NotFound and would drop every grant those cursors spawn; a 404 on one directory's users stays
-// NotFound, because that directory is genuinely gone.
+// into an empty page, which a full sync would read as every grant being removed. A 404 must
+// become Internal: the SDK skips a NotFound and would drop every grant the call covers, and
+// Atlassian's 404 on these endpoints means the organization or directory was not found.
 func TestGroupGrantsForResourceTypeAPIErrors(t *testing.T) {
 	endpoints := []struct {
-		name         string
-		input        string
-		notFoundCode codes.Code
+		name  string
+		input string
 	}{
-		{name: "directories", input: `{"kind":"directories"}`, notFoundCode: codes.Internal},
-		{name: "users search", input: `{"kind":"members","directoryId":"d1"}`, notFoundCode: codes.NotFound},
-		{name: "groups search", input: `{"kind":"groups"}`, notFoundCode: codes.Internal},
+		{name: "directories", input: `{"kind":"directories"}`},
+		{name: "users search", input: `{"kind":"members","directoryId":"d1"}`},
+		{name: "groups search", input: `{"kind":"groups"}`},
 	}
 	statuses := []struct {
 		httpStatus int
 		want       codes.Code
 	}{
 		{httpStatus: http.StatusForbidden, want: codes.PermissionDenied},
-		{httpStatus: http.StatusNotFound},
+		{httpStatus: http.StatusNotFound, want: codes.Internal},
 		{httpStatus: http.StatusTooManyRequests, want: codes.Unavailable},
 	}
 
 	for _, ep := range endpoints {
 		for _, st := range statuses {
-			want := st.want
-			if st.httpStatus == http.StatusNotFound {
-				want = ep.notFoundCode
-			}
 			t.Run(fmt.Sprintf("%s %d", ep.name, st.httpStatus), func(t *testing.T) {
 				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.Header().Set("Content-Type", "application/json")
@@ -244,8 +238,8 @@ func TestGroupGrantsForResourceTypeAPIErrors(t *testing.T) {
 				}
 
 				grants, res, err := newGroupBuilder(c).GrantsForResourceType(context.Background(), groupResourceType.Id, resource.SyncOpAttrs{PageToken: pagination.Token{Token: ep.input}})
-				if status.Code(err) != want {
-					t.Fatalf("code = %v, want %v (err: %v)", status.Code(err), want, err)
+				if status.Code(err) != st.want {
+					t.Fatalf("code = %v, want %v (err: %v)", status.Code(err), st.want, err)
 				}
 				if len(grants) != 0 || res != nil {
 					t.Errorf("got %d grants and results %v on error, want none", len(grants), res)

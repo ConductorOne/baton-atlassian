@@ -180,7 +180,7 @@ func (b *groupBuilder) planGroupGrants() ([]*v2.Grant, *resource.SyncOpResults, 
 func (b *groupBuilder) spawnGroupMemberCursors(ctx context.Context, token groupGrantsToken) ([]*v2.Grant, *resource.SyncOpResults, error) {
 	directories, next, err := b.client.ListDirectories(ctx, token.Cursor)
 	if err != nil {
-		return nil, nil, orgWideListError("list directories", err)
+		return nil, nil, notFoundFailsSync("list directories", err)
 	}
 
 	tokens := make([]string, 0, len(directories))
@@ -211,7 +211,7 @@ func (b *groupBuilder) groupMemberGrants(ctx context.Context, token groupGrantsT
 
 	users, next, err := b.client.SearchUsersWithGroups(ctx, token.DirectoryID, token.Cursor)
 	if err != nil {
-		return nil, nil, fmt.Errorf("baton-atlassian: failed to search users with groups in directory %s: %w", token.DirectoryID, err)
+		return nil, nil, notFoundFailsSync(fmt.Sprintf("search users with groups in directory %s", token.DirectoryID), err)
 	}
 
 	var grants []*v2.Grant
@@ -243,7 +243,7 @@ func (b *groupBuilder) groupMemberGrants(ctx context.Context, token groupGrantsT
 func (b *groupBuilder) spawnGroupRoleCursors(ctx context.Context, token groupGrantsToken) ([]*v2.Grant, *resource.SyncOpResults, error) {
 	groups, next, err := b.client.SearchGroups(ctx, token.Cursor)
 	if err != nil {
-		return nil, nil, orgWideListError("search groups", err)
+		return nil, nil, notFoundFailsSync("search groups", err)
 	}
 
 	tokens := make([]string, 0, len(groups))
@@ -286,15 +286,16 @@ func (b *groupBuilder) groupRoleGrants(ctx context.Context, token groupGrantsTok
 	return grants, &resource.SyncOpResults{NextPageToken: nextToken}, nil
 }
 
-// orgWideListError wraps an error from an org-wide list (directories, groups search) whose
-// cursor spawns every members or roles cursor. The SDK treats NotFound from a grants call as a
-// skipped resource and still finishes the sync, which is right for one deleted directory or
-// group, but here it would drop every grant the cursor spawns, and C1 would read them all as
-// removed. An org-wide list cannot be legitimately missing, so NotFound becomes Internal and
-// fails the sync instead.
-func orgWideListError(operation string, err error) error {
+// notFoundFailsSync wraps an error from a call whose result covers many grants: the directory
+// list and the group search each spawn every members or roles cursor, and one directory's
+// users can hold every membership in a single-directory org. The SDK treats NotFound from a
+// grants call as a skipped resource and still finishes the sync, so a 404 here would drop all of
+// those grants and C1 would read them as removed. Atlassian's 404 on these endpoints means the
+// organization or directory was not found (see the client methods), which is never a safe skip,
+// so NotFound becomes Internal and fails the sync instead.
+func notFoundFailsSync(operation string, err error) error {
 	if status.Code(err) == codes.NotFound {
-		return status.Errorf(codes.Internal, "baton-atlassian: failed to %s: the org-wide list returned not found: %v", operation, err)
+		return status.Errorf(codes.Internal, "baton-atlassian: failed to %s: Atlassian returned not found for the organization or directory: %v", operation, err)
 	}
 	return fmt.Errorf("baton-atlassian: failed to %s: %w", operation, err)
 }
