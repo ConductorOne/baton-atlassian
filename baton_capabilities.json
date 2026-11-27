@@ -20,6 +20,11 @@
         "displayName": "Group",
         "traits": [
           "TRAIT_GROUP"
+        ],
+        "annotations": [
+          {
+            "@type": "type.googleapis.com/c1.connector.v2.TypeScopedGrants"
+          }
         ]
       },
       "capabilities": [
